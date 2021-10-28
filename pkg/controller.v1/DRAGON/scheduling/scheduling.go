@@ -381,6 +381,7 @@ func SchedulingAlgorithm(
 	 * If no high priority job, select a job can be scheduled from waiting
 	 * queue.
 	 */
+	scheduled := false
 
 	if highPriorityJob == nil || scaleDownFlag {
 		if pendingResource != nil {
@@ -416,6 +417,7 @@ func SchedulingAlgorithm(
 						log.Errorf("Error when update SharePod: %s", errr)
 					} else {
 						/* SharePod Schedule successfully */
+						scheduled = true
 						lastActionTime = metav1.Now()
 						// delete SharePod from queue
 						highPrioritySharePodsQueueMutex.Lock()
@@ -457,7 +459,7 @@ func SchedulingAlgorithm(
 					runningQueue.Add(job)
 					now := metav1.Now()
 					job.Status.StartRunTime = &now
-
+					scheduled = true
 					lastActionTime = metav1.Now()
 					break
 				}
@@ -485,7 +487,7 @@ func SchedulingAlgorithm(
 	 * Scheduling Phase 4
 	 */
 
-	if len(*runningQueue) != 0 {
+	if len(*runningQueue) != 0 && !scheduled {
 		ok, placementPlan := MigrateTask(*runningQueue, nodeRes)
 		if ok {
 			log.Infof("Migration accepted")
@@ -985,10 +987,11 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 			plan := (*runJob.ReplicasPlacementPlan[tfv1.TFReplicaTypeWorker])[nodeName]
 			for workerID, worker := range *plan {
 				log.Infof("Worker ID %v", workerID)
+				log.Infof("Worker %v", worker)
 				// Cannot release this resource due to it's critical
-				if worker.Critical {
-					continue
-				}
+				// if worker.Critical {
+				// 	continue
+				// }
 
 				// scale down one worker
 				// res := nodeRes[nodeName]
