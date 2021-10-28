@@ -1038,6 +1038,7 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 	// 	return
 	// }
 	log.Infof("Migrate Task successful")
+	can = true
 
 	return
 }
