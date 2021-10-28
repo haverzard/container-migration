@@ -485,7 +485,7 @@ func SchedulingAlgorithm(
 	 * Scheduling Phase 4
 	 */
 
-	if now := metav1.Now(); now.Sub(lastActionTime.Time).Seconds() >= 50.0 {
+	if len(*runningQueue) != 0 {
 		ok, placementPlan := MigrateTask(*runningQueue, nodeRes)
 		if ok {
 			for job, plan := range placementPlan {
