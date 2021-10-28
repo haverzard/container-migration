@@ -488,6 +488,7 @@ func SchedulingAlgorithm(
 	if len(*runningQueue) != 0 {
 		ok, placementPlan := MigrateTask(*runningQueue, nodeRes)
 		if ok {
+			log.Infof("Migration accepted")
 			for job, plan := range placementPlan {
 				job.ReplicasPlacementPlan[tfv1.TFReplicaTypeWorker] = plan
 			}
@@ -980,8 +981,10 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 		stop := false
 		// run over each worker but can't delete over max delete count
 		for _, nodeName := range SortNodeFromJob(runJob) {
+			log.Infof("Node name %v", nodeName)
 			plan := (*runJob.ReplicasPlacementPlan[tfv1.TFReplicaTypeWorker])[nodeName]
 			for workerID, worker := range *plan {
+				log.Infof("Worker ID %v", workerID)
 				// Cannot release this resource due to it's critical
 				if worker.Critical {
 					continue
@@ -1010,6 +1013,7 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 				if _, ok := migrationTarget[runJob]; !ok {
 					migrationTarget[runJob] = runJob.ReplicasPlacementPlan[tfv1.TFReplicaTypeWorker].DeepCopy()
 				}
+				log.Infof("Worker ID %v", workerID)
 				t := &WorkerResources{
 					Workers:   map[string]string{},
 					Critical:  false,
