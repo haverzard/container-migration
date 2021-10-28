@@ -154,13 +154,22 @@ func (tc *TFController) reconcilePods(
 	masterRole := false
 	for nodeName, workers := range createLater {
 		for workerid, worker := range *workers {
-			// find next available index
-			for ; usedIndex_i < usedIndexLen && workerIndex == usedIndex[usedIndex_i]; usedIndex_i, workerIndex = usedIndex_i+1, workerIndex+1 {
+			index := 0
+			if worker.Migration {
+				pod := podSlices[workerid][0]
+				index, err = strconv.Atoi(pod.Labels[tfReplicaIndexLabel])
+				if err != nil {
+					logger.Errorf("Pod Label replica index is not a number! %s", pod.Labels[tfReplicaIndexLabel])
+				}
+			} else {
+				// find next available index
+				for ; usedIndex_i < usedIndexLen && workerIndex == usedIndex[usedIndex_i]; usedIndex_i, workerIndex = usedIndex_i+1, workerIndex+1 {
+				}
+				index = workerIndex
 			}
-			logger.Infof("Worker Index: %d\n", workerIndex)
-			usedIndexCopy = append(usedIndexCopy, workerIndex)
+			logger.Infof("Worker Index: %d\n", index)
+			usedIndexCopy = append(usedIndexCopy, index)
 
-			index := workerIndex
 			masterRole = false
 			logger.Infof("Need to create new pod: %s", rt)
 			// if master pod is present, select the master pod
