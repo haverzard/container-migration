@@ -247,14 +247,16 @@ func (this *NodeResPlacePlan) PrintMe(prefix string) {
 
 type WorkerResources struct {
 	// ResourceName => ResourceId
-	Workers  map[string]string
-	Critical bool
+	Workers   map[string]string
+	Critical  bool
+	Migration bool
 }
 
 func (this *WorkerResources) DeepCopy() *WorkerResources {
 	w := WorkerResources{
-		Workers:  make(map[string]string, len(this.Workers)),
-		Critical: this.Critical,
+		Workers:   make(map[string]string, len(this.Workers)),
+		Critical:  this.Critical,
+		Migration: this.Migration,
 	}
 	for key, val := range this.Workers {
 		w.Workers[key] = val
@@ -554,8 +556,9 @@ func ScheduleJob(requestsGroups *[]*cluster.PodRequests, constNodeRes cluster.No
 					}
 
 					t := &WorkerResources{
-						Workers:  map[string]string{},
-						Critical: false,
+						Workers:   map[string]string{},
+						Critical:  false,
+						Migration: false,
 					}
 					(*tmps[groupIdx])[NewWorkerID(5)] = t
 					if request.GpuReq > 0 {
@@ -578,8 +581,9 @@ func ScheduleJob(requestsGroups *[]*cluster.PodRequests, constNodeRes cluster.No
 					}
 
 					t := &WorkerResources{
-						Workers:  map[string]string{},
-						Critical: false,
+						Workers:   map[string]string{},
+						Critical:  false,
+						Migration: false,
 					}
 					(*tmps[groupIdx])[NewWorkerID(5)] = t
 					if request.GpuReq > 0 {
@@ -686,8 +690,9 @@ func ScheduleJob(requestsGroups *[]*cluster.PodRequests, constNodeRes cluster.No
 					}
 
 					t := &WorkerResources{
-						Workers:  map[string]string{},
-						Critical: false,
+						Workers:   map[string]string{},
+						Critical:  false,
+						Migration: false,
 					}
 					(*tmps[groupIdx])[NewWorkerID(5)] = t
 					if request.GpuReq > 0 {
@@ -709,8 +714,9 @@ func ScheduleJob(requestsGroups *[]*cluster.PodRequests, constNodeRes cluster.No
 					}
 
 					t := &WorkerResources{
-						Workers:  map[string]string{},
-						Critical: false,
+						Workers:   map[string]string{},
+						Critical:  false,
+						Migration: false,
 					}
 					(*tmps[groupIdx])[NewWorkerID(5)] = t
 					if request.GpuReq > 0 {
@@ -886,8 +892,9 @@ func ScaleUp(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can boo
 						(*scaleUpTarget[job])[nodeName] = &NodeResPlacePlan{}
 					}
 					t := &WorkerResources{
-						Workers:  map[string]string{},
-						Critical: false,
+						Workers:   map[string]string{},
+						Critical:  false,
+						Migration: false,
 					}
 					(*(*scaleUpTarget[job])[nodeName])[NewWorkerID(5)] = t
 					if request.GpuReq > 0 {
@@ -915,8 +922,9 @@ func ScaleUp(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can boo
 						(*scaleUpTarget[job])[nodeName] = &NodeResPlacePlan{}
 					}
 					t := &WorkerResources{
-						Workers:  map[string]string{},
-						Critical: false,
+						Workers:   map[string]string{},
+						Critical:  false,
+						Migration: false,
 					}
 					(*(*scaleUpTarget[job])[nodeName])[NewWorkerID(5)] = t
 					if request.GpuReq > 0 {
@@ -934,6 +942,99 @@ func ScaleUp(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can boo
 
 	return
 }
+
+// ScaleDown scale down other jobs let high priority job runs.
+// ScaleDown is only called if high priority job exists.
+// func MigrateTask(highPriorityJob *cluster.PodRequests, runningQueue JobQueue, constNodeRes cluster.NodeResources) (can bool, migrationTarget JobsPlacementPlan, highPriorityJobPlacementPlan *[]*JobPlacementPlan) {
+// 	log.Infof("================= MigrateTask Start =================")
+// 	defer log.Infof("================== MigrateTask End ==================")
+
+// 	// Don't modify original one
+// 	nodeRes := *constNodeRes.DeepCopy()
+// 	c = make(JobsPlacementPlan)
+// 	can = false
+
+// 	// Run over running jobs to free resources
+// 	for _, runJob := range runningQueue {
+// 		i := int32(0)
+// 		maxDeleteCount := int32(runJob.ReplicasPlacementPlan[tfv1.TFReplicaTypeWorker].Count()) - *(runJob.Spec.MinInstances)
+// 		runJobReq := runJob.ReplicaRequest[tfv1.TFReplicaTypeWorker]
+// 		if maxDeleteCount < 0 {
+// 			log.Errorf("WHY running worker - min instances < 0 ???")
+// 		}
+// 		stop := false
+// 		// run over each worker but can't delete over max delete count
+// 		for _, nodeName := range SortNodeFromJob(runJob) {
+// 			plan := (*runJob.ReplicasPlacementPlan[tfv1.TFReplicaTypeWorker])[nodeName]
+// 			for workerID, worker := range *plan {
+
+// 				// test if request can be scheduled
+// 				log.Infof("Scale Down schedule test start...")
+// 				ok, tmp := ScheduleJob(&([]*cluster.PodRequests{highPriorityJob}), nodeRes)
+
+// 				if ok[0] == len(*highPriorityJob) {
+// 					log.Infof("Scale Down successful!")
+// 					highPriorityJobPlacementPlan = tmp
+// 					can = true
+// 					return
+// 				}
+
+// 				if i >= maxDeleteCount {
+// 					stop = true
+// 					break
+// 				}
+
+// 				// Cannot release this resource due to it's critical
+// 				if worker.Critical {
+// 					continue
+// 				}
+
+// 				// scale down one worker
+// 				res := nodeRes[nodeName]
+// 				res.CpuFree += runJobReq.CpuReq
+// 				res.MemFree += runJobReq.MemReq
+
+// 				if option.KubeShareSupport { // kubeshare/gpu
+// 					if gpuid, ok := (*worker).Workers[cluster.ResourceKubeShareGPU]; ok {
+// 						res.GpuFree[gpuid].GPUFreeReq += runJobReq.GpuReq
+// 						res.GpuFree[gpuid].GPUFreeMem += runJobReq.GpuMemReq
+// 					}
+// 				} else { // nvidia.com/gpu
+// 					if _, ok := (*worker).Workers[cluster.ResourceNvidiaGPU]; ok {
+// 						res.GpuFreeCount += int(runJobReq.GpuReq / 1000)
+// 					}
+// 				}
+// 				// log.Infof("************************************ DEBUG ************************************")
+// 				// nodeRes.PrintMe()
+// 				// log.Infof("************************************ DEBUG ************************************")
+
+// 				// make a temporary copy. apply to origin only if can scale down
+// 				if _, ok := migrationTarget[runJob]; !ok {
+// 					migrationTarget[runJob] = runJob.ReplicasPlacementPlan[tfv1.TFReplicaTypeWorker].DeepCopy()
+// 				}
+// 				delete((*(*migrationTarget[runJob])[nodeName]), workerID)
+
+// 				i++
+// 			}
+// 			if stop {
+// 				break
+// 			}
+// 		}
+// 	}
+
+// 	// final test if request can be scheduled
+// 	log.Infof("Scale Down schedule test start...")
+// 	ok, tmp := ScheduleJob(&([]*cluster.PodRequests{highPriorityJob}), nodeRes)
+
+// 	if ok[0] == len(*highPriorityJob) {
+// 		log.Infof("Scale Down successful!")
+// 		highPriorityJobPlacementPlan = tmp
+// 		can = true
+// 		return
+// 	}
+
+// 	return
+// }
 
 // SortNodeFromJob sort node priority from job's placement paln,
 // from the least important to the most
