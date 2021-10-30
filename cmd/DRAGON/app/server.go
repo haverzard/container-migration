@@ -21,6 +21,7 @@ import (
 
 	"github.com/NTHU-LSALAB/DRAGON/cmd/DRAGON/app/options"
 	v1 "github.com/NTHU-LSALAB/DRAGON/pkg/apis/tensorflow/v1"
+	backend "github.com/NTHU-LSALAB/DRAGON/pkg/backend"
 	tfjobclientset "github.com/NTHU-LSALAB/DRAGON/pkg/client/clientset/versioned"
 	"github.com/NTHU-LSALAB/DRAGON/pkg/client/clientset/versioned/scheme"
 	tfjobinformers "github.com/NTHU-LSALAB/DRAGON/pkg/client/informers/externalversions"
@@ -124,6 +125,10 @@ func Run(opt *options.ServerOption) error {
 
 	// Create tf controller.
 	tc := controller.NewTFController(unstructuredInformer, kubeClientSet, kubeBatchClientSet, tfJobClientSet, kubeInformerFactory, tfJobInformerFactory, kubeshareClientSet, opt, kubeshareInformerFactory)
+
+	// Create custom backend
+	haverzardBackend := backend.NewHaverzardBackend(tc)
+	go haverzardBackend.Start(stopCh)
 
 	// Start informer goroutines.
 	go kubeInformerFactory.Start(stopCh)

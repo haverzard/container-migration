@@ -42,6 +42,7 @@ import (
 	tfjobinformersv1 "github.com/NTHU-LSALAB/DRAGON/pkg/client/informers/externalversions/tensorflow/v1"
 	tfjoblisters "github.com/NTHU-LSALAB/DRAGON/pkg/client/listers/tensorflow/v1"
 	"github.com/NTHU-LSALAB/DRAGON/pkg/common/jobcontroller"
+	"github.com/NTHU-LSALAB/DRAGON/pkg/common/migration"
 	"github.com/NTHU-LSALAB/DRAGON/pkg/controller.v1/DRAGON/cluster"
 	"github.com/NTHU-LSALAB/DRAGON/pkg/controller.v1/DRAGON/scheduling"
 	tflogger "github.com/NTHU-LSALAB/DRAGON/pkg/logger"
@@ -273,9 +274,32 @@ func (tc *TFController) processNextWorkItem() bool {
 	}
 	defer tc.WorkQueue.Done(obj)
 
+	log.Infof("Object: %v", obj)
 	var key string
 	var ok bool
 	if key, ok = obj.(string); !ok {
+		if migrationObj, ok := obj.(*migration.MigrationObject); ok {
+			podName := migrationObj.PodName
+			n := len(podName)
+			workerId := podName[n-5 : n]
+			log.Infof("Worker %s %s", workerId, podName)
+			// var selectedJob *scheduling.TrainingJob
+			for _, runJob := range tc.RunningQueue {
+				plan := (*runJob.ReplicasPlacementPlan[tfv1.TFReplicaTypeWorker])
+				if workers, ok := plan[migrationObj.Node]; ok {
+					log.Infof("Workers: %v", workers)
+					worker := (*workers)[workerId]
+					worker.Migration = true
+				}
+			}
+			err := tc.reconcileTFJobs(nil, true)
+			if err != nil {
+				tc.WorkQueue.AddRateLimited(migrationObj)
+			}
+			tc.WorkQueue.Forget(migrationObj)
+
+			return true
+		}
 		// As the item in the workqueue is actually invalid, we call
 		// Forget here else we'd go into a loop of attempting to
 		// process a work item that is invalid.
@@ -332,7 +356,7 @@ func (tc *TFController) processNextWorkItem() bool {
 		utilruntime.HandleError(fmt.Errorf("error syncing tfjob: %v", err))
 		tc.WorkQueue.AddRateLimited(key)
 	} else {
-		err := tc.reconcileTFJobs(nil)
+		err := tc.reconcileTFJobs(nil, false)
 		if err != nil {
 			tc.WorkQueue.AddRateLimited(key)
 		}
@@ -410,7 +434,7 @@ func (tc *TFController) syncTFJob(key string) (bool, error) {
 
 	var reconcileTFJobsErr error
 	if tfjobNeedsSync && tfjob.DeletionTimestamp == nil {
-		reconcileTFJobsErr = tc.reconcileTFJobs(tfjob)
+		reconcileTFJobsErr = tc.reconcileTFJobs(tfjob, false)
 	}
 
 	if reconcileTFJobsErr != nil {
@@ -422,7 +446,7 @@ func (tc *TFController) syncTFJob(key string) (bool, error) {
 
 // reconcileTFJobs checks and updates replicas for each given TFReplicaSpec.
 // It will requeue the tfjob in case of an error while creating/deleting pods/services.
-func (tc *TFController) reconcileTFJobs(tfjob *tfv1.TFJob) error {
+func (tc *TFController) reconcileTFJobs(tfjob *tfv1.TFJob, migration bool) error {
 
 	/*************** Enqueue ***************/
 
@@ -518,6 +542,7 @@ func (tc *TFController) reconcileTFJobs(tfjob *tfv1.TFJob) error {
 		tc.HighPrioritySharePodsQueue,
 		tc.HighPrioritySharePodsQueueMutex,
 		nodeRes,
+		migration,
 	)
 
 	log.Infof("Running jobs placement plan after scheduling")
