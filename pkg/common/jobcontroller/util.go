@@ -21,8 +21,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func GenGeneralName(jobName, rtype, index string) string {
-	n := jobName + "-" + rtype + "-" + index
+func GenGeneralName(jobName, rtype, index, workerId string) string {
+	var n string
+	if workerId != "" {
+		n = jobName + "-" + rtype + "-" + index + "-" + workerId
+	} else {
+		n = jobName + "-" + rtype + "-" + index
+	}
 	return strings.Replace(n, "/", "-", -1)
 }
 

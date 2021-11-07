@@ -125,7 +125,9 @@ func genClusterSpec(tfjob *tfv1.TFJob) (ClusterSpec, error) {
 				// Headless service assigned a DNS A record for a name of the form "my-svc.my-namespace.svc.cluster.local".
 				// And the last part "svc.cluster.local" is called cluster domain
 				// which maybe different between kubernetes clusters.
-				hostName := jobcontroller.GenGeneralName(tfjob.Name, rt, fmt.Sprintf("%d", i))
+				/* haverzard */
+				hostName := jobcontroller.GenGeneralName(tfjob.Name, rt, fmt.Sprintf("%d", i), "")
+				/* haverzard */
 				svcName := hostName + "." + tfjob.Namespace + "." + "svc"
 				cluserDomain := os.Getenv(EnvCustomClusterDomain)
 				if len(cluserDomain) > 0 {
@@ -149,7 +151,9 @@ func genClusterSpec(tfjob *tfv1.TFJob) (ClusterSpec, error) {
 				// Headless service assigned a DNS A record for a name of the form "my-svc.my-namespace.svc.cluster.local".
 				// And the last part "svc.cluster.local" is called cluster domain
 				// which maybe different between kubernetes clusters.
-				hostName := jobcontroller.GenGeneralName(tfjob.Name, rt, fmt.Sprintf("%d", i))
+				/* haverzard */
+				hostName := jobcontroller.GenGeneralName(tfjob.Name, rt, fmt.Sprintf("%d", i), "")
+				/* haverzard */
 				svcName := hostName + "." + tfjob.Namespace + "." + "svc"
 				cluserDomain := os.Getenv(EnvCustomClusterDomain)
 				if len(cluserDomain) > 0 {

@@ -991,9 +991,9 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 				log.Infof("Worker ID %v", workerID)
 				log.Infof("Worker %v", worker)
 				// Cannot release this resource due to it's critical
-				// if worker.Migration {
-				// 	continue
-				// }
+				if !worker.Migration {
+					continue
+				}
 
 				// scale down one worker
 				// res := nodeRes[nodeName]
@@ -1019,18 +1019,19 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 					migrationTarget[runJob] = runJob.ReplicasPlacementPlan[tfv1.TFReplicaTypeWorker].DeepCopy()
 				}
 
-				res := nodeRes[nodeName]
-				res.CpuFree += request.CpuReq
-				res.MemFree += request.MemReq
+				// Free resource on source node
+				source := nodeRes[nodeName]
+				source.CpuFree += request.CpuReq
+				source.MemFree += request.MemReq
 
 				if option.KubeShareSupport { // kubeshare/gpu
 					if gpuid, ok := (*worker).Workers[cluster.ResourceKubeShareGPU]; ok {
-						res.GpuFree[gpuid].GPUFreeReq += request.GpuReq
-						res.GpuFree[gpuid].GPUFreeMem += request.GpuMemReq
+						source.GpuFree[gpuid].GPUFreeReq += request.GpuReq
+						source.GpuFree[gpuid].GPUFreeMem += request.GpuMemReq
 					}
 				} else { // nvidia.com/gpu
 					if _, ok := (*worker).Workers[cluster.ResourceNvidiaGPU]; ok {
-						res.GpuFreeCount += int(request.GpuReq / 1000)
+						source.GpuFreeCount += int(request.GpuReq / 1000)
 					}
 				}
 
@@ -1043,12 +1044,33 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 					}
 				}
 
+				// Subtract resource on target node
+				target := nodeRes[nodeName]
+				target.CpuFree -= request.CpuReq
+				target.MemFree -= request.MemReq
+
+				if option.KubeShareSupport { // kubeshare/gpu
+					if gpuid, ok := (*worker).Workers[cluster.ResourceKubeShareGPU]; ok {
+						target.GpuFree[gpuid].GPUFreeReq -= request.GpuReq
+						target.GpuFree[gpuid].GPUFreeMem -= request.GpuMemReq
+					}
+				} else { // nvidia.com/gpu
+					if _, ok := (*worker).Workers[cluster.ResourceNvidiaGPU]; ok {
+						target.GpuFreeCount -= int(request.GpuReq / 1000)
+					}
+				}
+
+				if _, ok := (*migrationTarget[runJob])[bestTargetNodeName]; !ok {
+					(*migrationTarget[runJob])[bestTargetNodeName] = &NodeResPlacePlan{}
+				}
+
 				t := &WorkerResources{
 					Workers:   map[string]string{},
 					Critical:  false,
 					Migration: true,
 					TargetID:  workerID,
 				}
+				// TODO: do not migrate if the target node is the same as source node
 				delete((*(*migrationTarget[runJob])[nodeName]), workerID)
 
 				newWorkerID := NewWorkerID(5)

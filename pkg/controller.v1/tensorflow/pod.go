@@ -156,20 +156,22 @@ func (tc *TFController) reconcilePods(
 		for workerid, worker := range *workers {
 			/* haverzard */
 			index := 0
-			pods := podSlices[workerid]
-			if worker.Migration && len(pods) == 1 {
+			pods := podSlices[worker.TargetID]
+			if worker.Migration && len(pods) >= 1 {
 				pod := pods[0]
 				index, err = strconv.Atoi(pod.Labels[tfReplicaIndexLabel])
 				if err != nil {
 					logger.Errorf("Pod Label replica index is not a number! %s", pod.Labels[tfReplicaIndexLabel])
 				}
-				worker.Migration = false
+				logger.Infof("Migration Worker %v", worker)
 			} else {
 				// find next available index
 				for ; usedIndex_i < usedIndexLen && workerIndex == usedIndex[usedIndex_i]; usedIndex_i, workerIndex = usedIndex_i+1, workerIndex+1 {
 				}
 				index = workerIndex
 			}
+			// TODO: double check index doesn't exist in usedIndex (possible cause ScaleUp)
+			worker.Migration = false
 			/* haverzard */
 			logger.Infof("Worker Index: %d\n", index)
 			usedIndexCopy = append(usedIndexCopy, index)
@@ -382,7 +384,7 @@ func (tc *TFController) createNewPod(tfjob *tfv1.TFJob, rt, index string, spec *
 	podTemplate := spec.Template.DeepCopy()
 
 	// Set name for the template.
-	podTemplate.Name = jobcontroller.GenGeneralName(tfjob.Name, rt, workerid)
+	podTemplate.Name = jobcontroller.GenGeneralName(tfjob.Name, rt, index, workerid)
 
 	if podTemplate.Labels == nil {
 		podTemplate.Labels = make(map[string]string)
