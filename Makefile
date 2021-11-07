@@ -34,3 +34,6 @@ uninstall-custom:
 release:
 	docker build -t haverzard/dragon:0.0.0 -f docker/DRAGON/Dockerfile .
 	docker push haverzard/dragon:0.0.0
+
+init-cluster:
+	kind create cluster --name k8s-playground --config config/kind-config.yaml
