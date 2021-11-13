@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { Evaluation } from '../models/evaluation';
 import podStorage, { Pod } from '../entities/pod';
 import { ContainerCategory } from '../models/category';
+import axios from 'axios';
 
 const counter = {
   [ContainerCategory.Converged]: 0,
@@ -9,15 +10,20 @@ const counter = {
   [ContainerCategory.Watching]: 0,
 }
 
+const SERVER_ENDPOINT = process.env.SERVER_ENDPOINT || ""
+const NODE_NAME = process.env.NODE_NAME || ""
+
 async function decideMigration(pod: Pod) {
-  counter[pod.category]--;
+  // counter[pod.category]--;
   pod.speculate();
-  counter[pod.category]++;
+  // counter[pod.category]++;
+  console.log("category", pod.category);
   const total = counter[ContainerCategory.Progressing] + counter[ContainerCategory.Watching];
   if (pod.category == ContainerCategory.Converged
-    && total > 1) {
+    && total >= 0) {
     // Communicate with server endpoint
-    console.log("hehe");
+    console.log("hiii")
+    await axios.post(SERVER_ENDPOINT + "/hello", { "pod": pod.name, "node": NODE_NAME })
   }
   podStorage.garbageCollection();
 }

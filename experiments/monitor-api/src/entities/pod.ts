@@ -2,10 +2,10 @@ import { ContainerCategory } from "../models/category";
 import { Metric } from '../models/evaluation';
 import Queue from './queue';
 
-const TIME_WEIGHT = 100.0
-const METRIC_WEIGHT = 20.0
-const PROGRESSING_THREESHOLD = 0.05
-const CONVERGED_THREESHOLD = -0.025
+const TIME_WEIGHT = parseFloat(process.env.TIME_WEIGHT || "100.0")
+const METRIC_WEIGHT = parseFloat(process.env.METRIC_WEIGHT || "20.0")
+const PROGRESSING_THREESHOLD = parseFloat(process.env.PROGRESSING_THREESHOLD || "10")
+const CONVERGED_THREESHOLD = parseFloat(process.env.CONVERGED_THREESHOLD || "-25")
 
 
 interface ModelEvaluation {
@@ -42,21 +42,24 @@ export class Pod {
     let newEvaluation = this.evaluations.seek()!
     let dt = newEvaluation.time - oldEvaluation.time
     let dmetric = newEvaluation.metric.value - oldEvaluation.metric.value
-    let score = (dmetric * METRIC_WEIGHT + TIME_WEIGHT) / dt
+    let score = (dmetric * METRIC_WEIGHT - dt / TIME_WEIGHT)
 
+    let oldCategory = this.category
     let dscore = score - this.score
+    console.log("time", dt)
     console.log("SCORE", score, dscore)
-    if (dscore > PROGRESSING_THREESHOLD || dscore > 0) {
+    if (dscore > PROGRESSING_THREESHOLD || dscore > 5) {
       this.category = ContainerCategory.Progressing
-    } else if (dscore < 0) {
-      if (this.category == ContainerCategory.Progressing) {
+    } else if (dscore < -5) {
+      if (this.category == ContainerCategory.Progressing && dscore >= CONVERGED_THREESHOLD) {
         this.category = ContainerCategory.Watching
-      } else if (dscore < CONVERGED_THREESHOLD) {
+      } else {
         this.category = ContainerCategory.Converged
       }
     }
-
-    this.score = score
+    if (oldCategory != this.category) {
+      this.score = score
+    }
   }
 
   addEvaluation(evaluation: ModelEvaluation) {
