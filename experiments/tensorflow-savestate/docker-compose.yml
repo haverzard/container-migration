@@ -1,0 +1,29 @@
+version: "3.3"
+services:
+  ps:
+    build: .
+    hostname: ps
+    environment:
+      TF_CONFIG: '{"task": {"type": "ps", "index": 0}, "cluster": {"ps": ["ps:2222"], "worker": ["worker:2223"]}}'
+    ports:
+    - 2222:2222
+    networks:
+    - tfnet
+  worker:
+    build: .
+    hostname: worker
+    environment:
+      TF_CONFIG: '{"task": {"type": "worker", "index": 0}, "cluster": {"ps": ["ps:2222"], "worker": ["worker:2223"]}}'
+      global_steps: 10000
+    volumes:
+    - ./checkpoints/:/cp/:rw
+    depends_on:
+    - ps
+    ports:
+    - 2223:2222
+    networks:
+    - tfnet
+
+networks:
+  tfnet:
+    driver: bridge
