@@ -23,20 +23,6 @@ services:
     - 2223:2222
     networks:
     - tfnet
-  # worker2:
-  #   build: .
-  #   hostname: worker2
-  #   environment:
-  #     TF_CONFIG: '{"task": {"type": "worker", "index": 1}, "cluster": {"ps": ["ps:2222"], "worker": ["worker:2223","worker2:2224"]}}'
-  #     global_steps: 10000
-  #   volumes:
-  #   - ./cp2/:/cp/:rw
-  #   depends_on:
-  #   - ps
-  #   ports:
-  #   - 2224:2222
-  #   networks:
-  #   - tfnet
 
 networks:
   tfnet:
