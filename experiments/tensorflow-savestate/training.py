@@ -59,9 +59,6 @@ def main(_):
         scaffold = tf.train.Scaffold(saver=saver)
         hooks = [
             tf.train.StopAtStepHook(last_step=FLAGS.global_steps),
-            # tf.estimator.CheckpointSaverHook(
-            #     FLAGS.train_dir, save_steps=10, scaffold=scaffold
-            # ),
         ]
 
         # The MonitoredTrainingSession takes care of session initialization,
@@ -77,18 +74,12 @@ def main(_):
             scaffold=scaffold,
             checkpoint_dir=FLAGS.train_dir,
             hooks=hooks,
-        ) as mon_sess:
-            ckpt = tf.train.get_checkpoint_state(FLAGS.train_dir)
-            # if ckpt and ckpt.model_checkpoint_path:
-            #     # Restores from checkpoint
-            #     saver.restore(mon_sess, ckpt.model_checkpoint_path)
+        ) as mon_sess:]
             while not mon_sess.should_stop():
                 batch_xs, batch_ys = mnist.train.next_batch(16)
                 _, step = mon_sess.run(
                     [train_step, global_step], feed_dict={x: batch_xs, y_: batch_ys}
-                )
-            print(os.listdir(FLAGS.train_dir))
-            # exit()
+                )=
             # sys.stderr.write('global_step: '+str(step))
             # sys.stderr.write('\n')
 
