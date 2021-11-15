@@ -1035,6 +1035,7 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 					}
 				}
 
+				// Find best node
 				var bestTargetNodeName string
 				var bestTargetNode *cluster.NodeResource
 				for targetNodeName, targetNode := range nodeRes {
@@ -1042,6 +1043,25 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 						bestTargetNode = targetNode
 						bestTargetNodeName = targetNodeName
 					}
+				}
+				// TODO: do not migrate if the target node is the same as source node
+				if nodeName == bestTargetNodeName {
+					// Subtract resource on target node
+					source.CpuFree -= request.CpuReq
+					source.MemFree -= request.MemReq
+
+					if option.KubeShareSupport { // kubeshare/gpu
+						if gpuid, ok := (*worker).Workers[cluster.ResourceKubeShareGPU]; ok {
+							source.GpuFree[gpuid].GPUFreeReq -= request.GpuReq
+							source.GpuFree[gpuid].GPUFreeMem -= request.GpuMemReq
+						}
+					} else { // nvidia.com/gpu
+						if _, ok := (*worker).Workers[cluster.ResourceNvidiaGPU]; ok {
+							source.GpuFreeCount -= int(request.GpuReq / 1000)
+						}
+					}
+					worker.Migration = false
+					break
 				}
 
 				// Subtract resource on target node
@@ -1070,7 +1090,6 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 					Migration: true,
 					TargetID:  workerID,
 				}
-				// TODO: do not migrate if the target node is the same as source node
 				delete((*(*migrationTarget[runJob])[nodeName]), workerID)
 
 				newWorkerID := NewWorkerID(5)
