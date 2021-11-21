@@ -79,13 +79,18 @@ def main(_):
                     [train_step, global_step], feed_dict={x: batch_xs, y_: batch_ys}
                 )
                 requests.post(
-                    FLAGS.monitoring_api + "/api/monitor/",
+                    FLAGS.monitoring_api + "/monitor",
                     headers={"Content-Type": "application/json"},
-                    json={
-                        "name": FLAGS.pod_name,
-                        "metric": {"name": "accuracy", "value": 100.0,},
-                    },
+                    json={"pod": FLAGS.pod_name, "value": 100.0,},
                 )
+                # requests.post(
+                #     FLAGS.monitoring_api + "/api/monitor/",
+                #     headers={"Content-Type": "application/json"},
+                #     json={
+                #         "name": FLAGS.pod_name,
+                #         "metric": {"name": "accuracy", "value": 100.0,},
+                #     },
+                # )
                 # sys.stderr.write("global_step: " + str(step))
                 # sys.stderr.write("\n")
 
