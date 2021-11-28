@@ -12,11 +12,12 @@ import (
 )
 
 type MonitorRouter struct {
-	PodCtl *controller.PodController
+	NodeCtl *controller.NodeController
+	PodCtl  *controller.PodController
 }
 
-func NewMonitorRouter(podCtl *controller.PodController) *MonitorRouter {
-	return &MonitorRouter{PodCtl: podCtl}
+func NewMonitorRouter(nodeCtl *controller.NodeController, podCtl *controller.PodController) *MonitorRouter {
+	return &MonitorRouter{NodeCtl: nodeCtl, PodCtl: podCtl}
 }
 
 func RegisterMonitorRouter(mr *MonitorRouter) {
@@ -24,10 +25,10 @@ func RegisterMonitorRouter(mr *MonitorRouter) {
 }
 
 func (mr *MonitorRouter) DecideMigration(pod *model.Pod) {
-	originalCategory := pod.Category
+	// originalCategory := pod.Category
 	pod.Speculate()
-	log.Printf("Speculated Category: %v, Original: %v", pod.Category, originalCategory)
-	if pod.Category == model.Converged {
+	// log.Printf("Speculated Category: %v, Original: %v", pod.Category, originalCategory)
+	if pod.Category == model.Converged || pod.Category == model.Watching && mr.NodeCtl.IsOverload() {
 		log.Printf("Migrating pod %v", pod.Name)
 		body, err := json.Marshal(map[string]string{
 			"pod":  pod.Name,
@@ -36,16 +37,14 @@ func (mr *MonitorRouter) DecideMigration(pod *model.Pod) {
 		if err != nil {
 			log.Fatalf("Error on Migration: %v", err)
 		}
-		http.Post(utils.SERVER_ENDPOINT+"/hello", "application/json", bytes.NewBuffer(body))
+		http.Post(utils.SERVER_ENDPOINT+"/migrate", "application/json", bytes.NewBuffer(body))
 	}
 }
 
 func (mr *MonitorRouter) MonitorEvaluation(w http.ResponseWriter, req *http.Request) {
-	log.Println("Received a request")
 	d := json.NewDecoder(req.Body)
 	eval := &model.EvaluationObject{}
-	err := d.Decode(eval)
-	if err != nil {
+	if err := d.Decode(eval); err != nil {
 		log.Fatalf("Error: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

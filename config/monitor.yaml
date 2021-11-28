@@ -26,7 +26,7 @@ spec:
       #   effect: NoSchedule
       containers:
       - name: container-monitor
-        image: haverzard/monitor-api:0.0.0
+        image: haverzard/monitor-api:go-0.0.1
         imagePullPolicy: Always
         resources:
           limits:

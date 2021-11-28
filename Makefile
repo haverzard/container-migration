@@ -43,8 +43,8 @@ release-api:
 
 
 release-api-v2:
-	docker build -t haverzard/monitor-api:go-0.0.0 -f experiments/monitor-api-v2/Dockerfile experiments/monitor-api-v2/
-	docker push haverzard/monitor-api:go-0.0.0
+	docker build -t haverzard/monitor-api:go-0.0.1 -f experiments/monitor-api-v2/Dockerfile experiments/monitor-api-v2/
+	docker push haverzard/monitor-api:go-0.0.1
 
 init-cluster:
 	minikube start --nodes 3 -p ta-playground

@@ -1,7 +1,6 @@
 package model
 
 import (
-	"log"
 	"time"
 
 	"github.com/haverzard/ta/pkg/utils"
@@ -44,8 +43,8 @@ func (pod *Pod) Speculate() {
 	oldCategory := pod.Category
 	dscore := score - pod.Score
 
-	log.Printf("Time: %v, Score: %v, dScore: %v", dt, score, dscore)
-	log.Printf("Test %v", utils.PROGRESSING_THREESHOLD)
+	// log.Printf("Time: %v, Score: %v, dScore: %v", dt, score, dscore)
+	// log.Printf("Test %v", utils.PROGRESSING_THREESHOLD)
 	// SpeCon + Custom categorization
 	if dscore > utils.PROGRESSING_THREESHOLD || dscore > float64(5) {
 		pod.Category = Progressing
