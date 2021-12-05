@@ -39,6 +39,8 @@ type PodRequests []*PodRequest
 type PodRequest struct {
 	CpuReq    int64
 	MemReq    int64
+	CpuUB     int64
+	MemUB     int64
 	GpuReq    int64
 	GpuMemReq int64
 }
@@ -68,6 +70,8 @@ func (this *NodeResources) PrintMe() {
 		log.Infof("CpuFree: %d", res.CpuFree)
 		log.Infof("MemFree: %d", res.MemFree)
 		log.Infof("GpuFree: %d", res.GpuFreeCount)
+		log.Infof("CpuUpperBound: %d", res.CpuUB)
+		log.Infof("MemUpperBound: %d", res.MemUB)
 		log.Infof("GpuId:")
 		for id, gpu := range res.GpuFree {
 			log.Infof("    %s: %d, %d", id, (*gpu).GPUFreeReq, (*gpu).GPUFreeMem)
@@ -88,6 +92,9 @@ type NodeResource struct {
 	GpuMemTotal int64
 	CpuFree     int64
 	MemFree     int64
+	// UpperBound in bytes
+	CpuUB int64
+	MemUB int64
 	/* Available GPU calculate */
 	// Total GPU count - Pods using nvidia.com/gpu
 	GpuFreeCount int
@@ -108,6 +115,8 @@ func (this *NodeResource) DeepCopy() *NodeResource {
 		GpuMemTotal:  this.GpuMemTotal,
 		CpuFree:      this.CpuFree,
 		MemFree:      this.MemFree,
+		CpuUB:        this.CpuUB,
+		MemUB:        this.MemUB,
 		GpuFreeCount: this.GpuFreeCount,
 		GpuFree:      gpuFreeCopy,
 	}
@@ -192,6 +201,8 @@ func syncPodResources(nodeRes NodeResources, podList *corev1.PodList, sharePodLi
 		for _, container := range pod.Spec.Containers {
 			nodeRes[nodeName].CpuFree -= container.Resources.Requests.Cpu().MilliValue()
 			nodeRes[nodeName].MemFree -= container.Resources.Requests.Memory().MilliValue()
+			nodeRes[nodeName].CpuUB += container.Resources.Limits.Cpu().MilliValue()
+			nodeRes[nodeName].MemUB += container.Resources.Limits.Memory().MilliValue()
 			gpu := container.Resources.Limits[kubesharev1.ResourceNVIDIAGPU]
 			nodeRes[nodeName].GpuFreeCount -= int(gpu.Value())
 		}
@@ -216,6 +227,8 @@ func syncPodResources(nodeRes NodeResources, podList *corev1.PodList, sharePodLi
 			for _, container := range SharePod.Spec.Containers {
 				nodeRes[nodeName].CpuFree -= container.Resources.Requests.Cpu().MilliValue()
 				nodeRes[nodeName].MemFree -= container.Resources.Requests.Memory().MilliValue()
+				nodeRes[nodeName].CpuUB += container.Resources.Limits.Cpu().MilliValue()
+				nodeRes[nodeName].MemUB += container.Resources.Limits.Memory().MilliValue()
 			}
 
 			if gpuid, gpuidok := SharePod.ObjectMeta.Annotations[kubesharev1.KubeShareResourceGPUID]; gpuidok && gpuid != "" {
@@ -315,6 +328,8 @@ func syncNodeResources(nodeList *corev1.NodeList) (nodeResources NodeResources) 
 			GpuMemTotal:  gpuMem * 1024 * 1024, // in bytes
 			CpuFree:      cpu,
 			MemFree:      mem,
+			CpuUB:        0,
+			MemUB:        0,
 			GpuFreeCount: gpuNum,
 			GpuFree:      make(map[string]*GPUInfo, gpuNum),
 		}
