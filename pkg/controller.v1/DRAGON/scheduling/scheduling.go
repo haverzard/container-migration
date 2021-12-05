@@ -275,6 +275,8 @@ func GetPodRequestsFromPodTemplate(template *corev1.PodTemplateSpec) *cluster.Po
 	tmp := cluster.PodRequest{
 		CpuReq:    0,
 		MemReq:    0,
+		CpuUB:     0,
+		MemUB:     0,
 		GpuReq:    0,
 		GpuMemReq: 0,
 	}
@@ -282,6 +284,8 @@ func GetPodRequestsFromPodTemplate(template *corev1.PodTemplateSpec) *cluster.Po
 	for _, container := range template.Spec.Containers {
 		tmp.CpuReq += container.Resources.Requests.Cpu().MilliValue()
 		tmp.MemReq += container.Resources.Requests.Memory().MilliValue()
+		tmp.CpuUB += container.Resources.Limits.Cpu().MilliValue()
+		tmp.MemUB += container.Resources.Limits.Memory().MilliValue()
 	}
 
 	if option.KubeShareSupport {
@@ -567,6 +571,8 @@ func ScheduleJob(requestsGroups *[]*cluster.PodRequests, constNodeRes cluster.No
 
 					node.CpuFree -= request.CpuReq
 					node.MemFree -= request.MemReq
+					node.CpuUB += request.CpuUB
+					node.MemUB += request.MemUB
 					if request.GpuReq > 0 {
 						node.GpuFree[freeGPUID].GPUFreeReq -= request.GpuReq
 						node.GpuFree[freeGPUID].GPUFreeMem -= request.GpuMemReq
@@ -594,6 +600,8 @@ func ScheduleJob(requestsGroups *[]*cluster.PodRequests, constNodeRes cluster.No
 
 					node.CpuFree -= request.CpuReq
 					node.MemFree -= request.MemReq
+					node.CpuUB += request.CpuUB
+					node.MemUB += request.MemUB
 					if request.GpuReq > 0 {
 						node.GpuFreeCount -= int(request.GpuReq / 1000)
 					}
@@ -703,6 +711,8 @@ func ScheduleJob(requestsGroups *[]*cluster.PodRequests, constNodeRes cluster.No
 
 					node.CpuFree -= request.CpuReq
 					node.MemFree -= request.MemReq
+					node.CpuUB += request.CpuUB
+					node.MemUB += request.MemUB
 					if request.GpuReq > 0 {
 						node.GpuFree[freeGPUID].GPUFreeReq -= request.GpuReq
 						node.GpuFree[freeGPUID].GPUFreeMem -= request.GpuMemReq
@@ -729,6 +739,8 @@ func ScheduleJob(requestsGroups *[]*cluster.PodRequests, constNodeRes cluster.No
 
 					node.CpuFree -= request.CpuReq
 					node.MemFree -= request.MemReq
+					node.CpuUB += request.CpuUB
+					node.MemUB += request.MemUB
 					if request.GpuReq > 0 {
 						node.GpuFreeCount -= int(request.GpuReq / 1000)
 					}
@@ -811,6 +823,8 @@ func ScaleDown(highPriorityJob *cluster.PodRequests, runningQueue JobQueue, cons
 				res := nodeRes[nodeName]
 				res.CpuFree += runJobReq.CpuReq
 				res.MemFree += runJobReq.MemReq
+				res.CpuUB -= runJobReq.CpuUB
+				res.MemUB -= runJobReq.MemUB
 
 				if option.KubeShareSupport { // kubeshare/gpu
 					if gpuid, ok := (*worker).Workers[cluster.ResourceKubeShareGPU]; ok {
@@ -901,6 +915,9 @@ func ScaleUp(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can boo
 
 					node.CpuFree -= request.CpuReq
 					node.MemFree -= request.MemReq
+					node.CpuUB += request.CpuUB
+					node.MemUB += request.MemUB
+
 					if request.GpuReq > 0 {
 						node.GpuFree[freeGPUID].GPUFreeReq -= request.GpuReq
 						node.GpuFree[freeGPUID].GPUFreeMem -= request.GpuMemReq
@@ -933,6 +950,8 @@ func ScaleUp(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can boo
 
 					node.CpuFree -= request.CpuReq
 					node.MemFree -= request.MemReq
+					node.CpuUB += request.CpuUB
+					node.MemUB += request.MemUB
 					if request.GpuReq > 0 {
 						node.GpuFreeCount -= int(request.GpuReq / 1000)
 					}
@@ -964,6 +983,10 @@ func ScaleUp(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can boo
 	}
 
 	return
+}
+
+func getNodeScoreByResource(node *cluster.NodeResource) float64 {
+	return float64(node.CpuUB)/float64(node.CpuTotal)*0.7 + float64(node.MemUB)/float64(node.MemTotal)*0.3
 }
 
 /* haverzard */
@@ -1023,6 +1046,8 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 				source := nodeRes[nodeName]
 				source.CpuFree += request.CpuReq
 				source.MemFree += request.MemReq
+				source.CpuUB -= request.CpuUB
+				source.MemUB -= request.MemUB
 
 				if option.KubeShareSupport { // kubeshare/gpu
 					if gpuid, ok := (*worker).Workers[cluster.ResourceKubeShareGPU]; ok {
@@ -1039,7 +1064,7 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 				var bestTargetNodeName string
 				var bestTargetNode *cluster.NodeResource
 				for targetNodeName, targetNode := range nodeRes {
-					if bestTargetNode == nil || bestTargetNode.CpuFree < targetNode.CpuFree {
+					if bestTargetNode == nil || getNodeScoreByResource(targetNode) < getNodeScoreByResource(bestTargetNode) {
 						bestTargetNode = targetNode
 						bestTargetNodeName = targetNodeName
 					}
@@ -1049,6 +1074,8 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 					// Subtract resource on target node
 					source.CpuFree -= request.CpuReq
 					source.MemFree -= request.MemReq
+					source.CpuUB += request.CpuUB
+					source.MemUB += request.MemUB
 
 					if option.KubeShareSupport { // kubeshare/gpu
 						if gpuid, ok := (*worker).Workers[cluster.ResourceKubeShareGPU]; ok {
@@ -1068,6 +1095,8 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 				target := nodeRes[nodeName]
 				target.CpuFree -= request.CpuReq
 				target.MemFree -= request.MemReq
+				target.CpuUB += request.CpuUB
+				target.MemUB += request.MemUB
 
 				if option.KubeShareSupport { // kubeshare/gpu
 					if gpuid, ok := (*worker).Workers[cluster.ResourceKubeShareGPU]; ok {
