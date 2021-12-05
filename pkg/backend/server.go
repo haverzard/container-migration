@@ -17,7 +17,8 @@ func NewHaverzardBackend(mh MigrationHandler) *HaverzardBackend {
 }
 
 func (hb *HaverzardBackend) Start(stopCh <-chan struct{}) {
-	http.HandleFunc("/hello", hb.hello)
+	http.HandleFunc("/migrate", hb.HandleMigration)
+	http.HandleFunc("/cluster-info", hb.GetClusterInfo)
 	server := &http.Server{Addr: ":8769"}
 	go func() {
 		server.ListenAndServe()
