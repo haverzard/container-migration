@@ -42,11 +42,11 @@ spec:
           - name: SERVER_ENDPOINT
             value: http://server-endpoint.kube-system.svc.cluster.local:8769
           - name: PROGRESSING_THREESHOLD
-            value: "1"
+            value: "0.5"
           - name: CONVERGED_THREESHOLD
-            value: "-25"
-          - name: TIME_WEIGHT
-            value: "10"
+            value: "-1"
+          - name: OVERLOAD_THREESHOLD
+            value: "0.8"
         # volumeMounts:
         # - name: varlog
         #   mountPath: /var/log

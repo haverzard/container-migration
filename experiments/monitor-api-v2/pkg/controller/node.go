@@ -3,6 +3,7 @@ package controller
 import (
 	"encoding/json"
 	"log"
+	"math"
 	"net/http"
 	"sync"
 
@@ -36,6 +37,7 @@ func NewNodeController() *NodeController {
 
 func (nc *NodeController) RetrieveGlobalInfo() {
 	nc.mu.Lock()
+	defer nc.mu.Unlock()
 	res, err := http.Get(utils.SERVER_ENDPOINT + "/cluster-info")
 	if err != nil {
 		log.Fatalf("Error: %v", err)
@@ -49,29 +51,45 @@ func (nc *NodeController) RetrieveGlobalInfo() {
 	}
 	nc.NodeResources = clusterInfo
 	log.Printf("Data: %v\n", clusterInfo)
-	nc.mu.Unlock()
 }
 
 func (nc *NodeController) IsOverload() bool {
 	nc.mu.Lock()
+	defer nc.mu.Unlock()
 	nodeResources := nc.CopyResources()
 	current := (*nodeResources)[utils.NODE_NAME]
 	if current == nil {
 		return false
 	}
 	nodeScore := getNodeScoreByResource(current)
-	for nodeName, nodeRes := range *nodeResources {
-		if nodeName != utils.NODE_NAME {
-			score := getNodeScoreByResource(nodeRes)
-			dscore := nodeScore - score
-			if nodeScore > 1 && score < 1 {
-				return true
-			}
-			if dscore > utils.OVERLOAD_THREESHOLD {
-				return true
-			}
-		}
+	scores := make([]float64, 0)
+	sum := float64(0)
+	n := 0
+	for _, nodeRes := range *nodeResources {
+		score := getNodeScoreByResource(nodeRes)
+		scores = append(scores, score)
+		sum += score
+		n++
 	}
-	nc.mu.Unlock()
-	return false
+	mean := sum / float64(n)
+	sum = 0
+	for _, score := range scores {
+		dx := (score - mean)
+		sum = dx * dx
+	}
+	std := math.Sqrt(sum / float64(n))
+	return ((nodeScore - mean) / std) > utils.OVERLOAD_THREESHOLD
+
+	// for nodeName, nodeRes := range *nodeResources {
+	// 	if nodeName != utils.NODE_NAME {
+	// 		score := getNodeScoreByResource(nodeRes)
+	// 		dscore := nodeScore - score
+	// 		if nodeScore > 1 && score < 1 {
+	// 			return true
+	// 		}
+	// 		if dscore > utils.OVERLOAD_THREESHOLD {
+	// 			return true
+	// 		}
+	// 	}
+	// }
 }

@@ -57,6 +57,9 @@ def main(_):
             train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(
                 cross_entropy, global_step=global_step
             )
+            acc, acc_op = tf.metrics.accuracy(
+                labels=tf.argmax(y_, axis=1), predictions=tf.argmax(y, 1)
+            )
 
         # The StopAtStepHook handles stopping after running given steps.
         hooks = [tf.train.StopAtStepHook(last_step=FLAGS.global_steps)]
@@ -78,10 +81,16 @@ def main(_):
                 _, step = mon_sess.run(
                     [train_step, global_step], feed_dict={x: batch_xs, y_: batch_ys}
                 )
+                if not mon_sess.should_stop():
+                    batch_xs, batch_ys = mnist.test.next_batch(128)
+                    accuracy = mon_sess.run(
+                        acc_op, feed_dict={x: batch_xs, y_: batch_ys}
+                    )
+                    sys.stderr.write("accuracy: " + str(accuracy) + "\n")
                 requests.post(
                     FLAGS.monitoring_api + "/monitor",
                     headers={"Content-Type": "application/json"},
-                    json={"pod": FLAGS.pod_name, "value": 100.0,},
+                    json={"pod": FLAGS.pod_name, "value": float(accuracy)},
                 )
                 # requests.post(
                 #     FLAGS.monitoring_api + "/api/monitor/",

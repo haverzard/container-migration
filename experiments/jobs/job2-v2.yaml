@@ -3,7 +3,7 @@ kind: TFJob
 metadata:
   name: job2
 spec:
-  max-instances: 4
+  max-instances: 2
   min-instances: 2
   cleanPodPolicy: "All"
   tfReplicaSpecs:
@@ -15,8 +15,8 @@ spec:
           terminationGracePeriodSeconds: 0
           containers:
           - name: tensorflow
-            image: tensorflow/tensorflow:1.15.0-py3
-            command: ["/bin/bash", "-c", "pip3 install requests; curl -s http://51f8-139-193-5-197.ngrok.io/hehe.py | python3 -"]
+            image: haverzard/tf-image:0.0.0
+            command: ["/bin/bash", "-c", "curl -s http://ac25-139-192-128-48.ngrok.io/hehe.py | python3 -"]
             ports:
             - containerPort: 2222
               name: tfjob-port
@@ -35,8 +35,8 @@ spec:
           terminationGracePeriodSeconds: 0
           containers:
           - name: tensorflow
-            image: tensorflow/tensorflow:1.15.0-py3
-            command: ["/bin/bash", "-c", "pip3 install requests; curl -s http://51f8-139-193-5-197.ngrok.io/hehe.py | python3 -"]
+            image: haverzard/tf-image:0.0.0
+            command: ["/bin/bash", "-c", "curl -s http://ac25-139-192-128-48.ngrok.io/hehe.py | python3 -"]
             env:
             - name: "global_steps"
               value: "10000"

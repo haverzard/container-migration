@@ -28,8 +28,12 @@ func (mr *MonitorRouter) DecideMigration(pod *model.Pod) {
 	// originalCategory := pod.Category
 	pod.Speculate()
 	// log.Printf("Speculated Category: %v, Original: %v", pod.Category, originalCategory)
-	if pod.Category == model.Converged || pod.Category == model.Watching && mr.NodeCtl.IsOverload() {
-		log.Printf("Migrating pod %v", pod.Name)
+	if pod.Category == model.Converged || mr.NodeCtl.IsOverload() {
+		if pod.NextRetry != 0 {
+			pod.NextRetry--
+			return
+		}
+		log.Printf("Migrating pod %v with category %v", pod.Name, pod.Category)
 		body, err := json.Marshal(map[string]string{
 			"pod":  pod.Name,
 			"node": utils.NODE_NAME,
@@ -38,6 +42,7 @@ func (mr *MonitorRouter) DecideMigration(pod *model.Pod) {
 			log.Fatalf("Error on Migration: %v", err)
 		}
 		http.Post(utils.SERVER_ENDPOINT+"/migrate", "application/json", bytes.NewBuffer(body))
+		pod.NextRetry = 20
 	}
 }
 
