@@ -247,14 +247,17 @@ func (this *NodeResPlacePlan) PrintMe(prefix string) {
 
 type WorkerResources struct {
 	// ResourceName => ResourceId
-	Workers  map[string]string
-	Critical bool
+	Workers   map[string]string
+	Critical  bool
+	Migration bool
+	TargetID  string
 }
 
 func (this *WorkerResources) DeepCopy() *WorkerResources {
 	w := WorkerResources{
-		Workers:  make(map[string]string, len(this.Workers)),
-		Critical: this.Critical,
+		Workers:   make(map[string]string, len(this.Workers)),
+		Critical:  this.Critical,
+		Migration: this.Migration,
 	}
 	for key, val := range this.Workers {
 		w.Workers[key] = val
@@ -272,6 +275,8 @@ func GetPodRequestsFromPodTemplate(template *corev1.PodTemplateSpec) *cluster.Po
 	tmp := cluster.PodRequest{
 		CpuReq:    0,
 		MemReq:    0,
+		CpuUB:     0,
+		MemUB:     0,
 		GpuReq:    0,
 		GpuMemReq: 0,
 	}
@@ -279,6 +284,8 @@ func GetPodRequestsFromPodTemplate(template *corev1.PodTemplateSpec) *cluster.Po
 	for _, container := range template.Spec.Containers {
 		tmp.CpuReq += container.Resources.Requests.Cpu().MilliValue()
 		tmp.MemReq += container.Resources.Requests.Memory().MilliValue()
+		tmp.CpuUB += container.Resources.Limits.Cpu().MilliValue()
+		tmp.MemUB += container.Resources.Limits.Memory().MilliValue()
 	}
 
 	if option.KubeShareSupport {
@@ -315,7 +322,25 @@ func SchedulingAlgorithm(
 	highPrioritySharePodsQueue *[]*kubesharev1.SharePod,
 	highPrioritySharePodsQueueMutex *sync.Mutex,
 	nodeRes cluster.NodeResources,
+	migration bool,
 ) {
+
+	/*
+	 * Migration Phase
+	 */
+
+	if migration {
+		ok, placementPlan := MigrateTask(*runningQueue, nodeRes)
+		if ok {
+			log.Infof("Migration accepted")
+			for job, plan := range placementPlan {
+				job.ReplicasPlacementPlan[tfv1.TFReplicaTypeWorker] = plan
+			}
+		}
+		// lastActionTime = metav1.Now()
+		return
+	}
+
 	// check if high priority job exists
 	var pendingResource *cluster.PodRequest = nil
 	var pendingSharePod *kubesharev1.SharePod
@@ -378,7 +403,6 @@ func SchedulingAlgorithm(
 	 * If no high priority job, select a job can be scheduled from waiting
 	 * queue.
 	 */
-
 	if highPriorityJob == nil || scaleDownFlag {
 		if pendingResource != nil {
 			ok, placementPlans := ScheduleJob(
@@ -454,7 +478,6 @@ func SchedulingAlgorithm(
 					runningQueue.Add(job)
 					now := metav1.Now()
 					job.Status.StartRunTime = &now
-
 					lastActionTime = metav1.Now()
 					break
 				}
@@ -548,14 +571,18 @@ func ScheduleJob(requestsGroups *[]*cluster.PodRequests, constNodeRes cluster.No
 
 					node.CpuFree -= request.CpuReq
 					node.MemFree -= request.MemReq
+					node.CpuUB += request.CpuUB
+					node.MemUB += request.MemUB
 					if request.GpuReq > 0 {
 						node.GpuFree[freeGPUID].GPUFreeReq -= request.GpuReq
 						node.GpuFree[freeGPUID].GPUFreeMem -= request.GpuMemReq
 					}
 
 					t := &WorkerResources{
-						Workers:  map[string]string{},
-						Critical: false,
+						Workers:   map[string]string{},
+						Critical:  false,
+						Migration: false,
+						TargetID:  "",
 					}
 					(*tmps[groupIdx])[NewWorkerID(5)] = t
 					if request.GpuReq > 0 {
@@ -573,13 +600,17 @@ func ScheduleJob(requestsGroups *[]*cluster.PodRequests, constNodeRes cluster.No
 
 					node.CpuFree -= request.CpuReq
 					node.MemFree -= request.MemReq
+					node.CpuUB += request.CpuUB
+					node.MemUB += request.MemUB
 					if request.GpuReq > 0 {
 						node.GpuFreeCount -= int(request.GpuReq / 1000)
 					}
 
 					t := &WorkerResources{
-						Workers:  map[string]string{},
-						Critical: false,
+						Workers:   map[string]string{},
+						Critical:  false,
+						Migration: false,
+						TargetID:  "",
 					}
 					(*tmps[groupIdx])[NewWorkerID(5)] = t
 					if request.GpuReq > 0 {
@@ -680,14 +711,18 @@ func ScheduleJob(requestsGroups *[]*cluster.PodRequests, constNodeRes cluster.No
 
 					node.CpuFree -= request.CpuReq
 					node.MemFree -= request.MemReq
+					node.CpuUB += request.CpuUB
+					node.MemUB += request.MemUB
 					if request.GpuReq > 0 {
 						node.GpuFree[freeGPUID].GPUFreeReq -= request.GpuReq
 						node.GpuFree[freeGPUID].GPUFreeMem -= request.GpuMemReq
 					}
 
 					t := &WorkerResources{
-						Workers:  map[string]string{},
-						Critical: false,
+						Workers:   map[string]string{},
+						Critical:  false,
+						Migration: false,
+						TargetID:  "",
 					}
 					(*tmps[groupIdx])[NewWorkerID(5)] = t
 					if request.GpuReq > 0 {
@@ -704,13 +739,17 @@ func ScheduleJob(requestsGroups *[]*cluster.PodRequests, constNodeRes cluster.No
 
 					node.CpuFree -= request.CpuReq
 					node.MemFree -= request.MemReq
+					node.CpuUB += request.CpuUB
+					node.MemUB += request.MemUB
 					if request.GpuReq > 0 {
 						node.GpuFreeCount -= int(request.GpuReq / 1000)
 					}
 
 					t := &WorkerResources{
-						Workers:  map[string]string{},
-						Critical: false,
+						Workers:   map[string]string{},
+						Critical:  false,
+						Migration: false,
+						TargetID:  "",
 					}
 					(*tmps[groupIdx])[NewWorkerID(5)] = t
 					if request.GpuReq > 0 {
@@ -784,6 +823,8 @@ func ScaleDown(highPriorityJob *cluster.PodRequests, runningQueue JobQueue, cons
 				res := nodeRes[nodeName]
 				res.CpuFree += runJobReq.CpuReq
 				res.MemFree += runJobReq.MemReq
+				res.CpuUB -= runJobReq.CpuUB
+				res.MemUB -= runJobReq.MemUB
 
 				if option.KubeShareSupport { // kubeshare/gpu
 					if gpuid, ok := (*worker).Workers[cluster.ResourceKubeShareGPU]; ok {
@@ -874,6 +915,9 @@ func ScaleUp(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can boo
 
 					node.CpuFree -= request.CpuReq
 					node.MemFree -= request.MemReq
+					node.CpuUB += request.CpuUB
+					node.MemUB += request.MemUB
+
 					if request.GpuReq > 0 {
 						node.GpuFree[freeGPUID].GPUFreeReq -= request.GpuReq
 						node.GpuFree[freeGPUID].GPUFreeMem -= request.GpuMemReq
@@ -886,8 +930,10 @@ func ScaleUp(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can boo
 						(*scaleUpTarget[job])[nodeName] = &NodeResPlacePlan{}
 					}
 					t := &WorkerResources{
-						Workers:  map[string]string{},
-						Critical: false,
+						Workers:   map[string]string{},
+						Critical:  false,
+						Migration: false,
+						TargetID:  "",
 					}
 					(*(*scaleUpTarget[job])[nodeName])[NewWorkerID(5)] = t
 					if request.GpuReq > 0 {
@@ -904,6 +950,8 @@ func ScaleUp(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can boo
 
 					node.CpuFree -= request.CpuReq
 					node.MemFree -= request.MemReq
+					node.CpuUB += request.CpuUB
+					node.MemUB += request.MemUB
 					if request.GpuReq > 0 {
 						node.GpuFreeCount -= int(request.GpuReq / 1000)
 					}
@@ -915,8 +963,10 @@ func ScaleUp(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can boo
 						(*scaleUpTarget[job])[nodeName] = &NodeResPlacePlan{}
 					}
 					t := &WorkerResources{
-						Workers:  map[string]string{},
-						Critical: false,
+						Workers:   map[string]string{},
+						Critical:  false,
+						Migration: false,
+						TargetID:  "",
 					}
 					(*(*scaleUpTarget[job])[nodeName])[NewWorkerID(5)] = t
 					if request.GpuReq > 0 {
@@ -931,6 +981,168 @@ func ScaleUp(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can boo
 			}
 		}
 	}
+
+	return
+}
+
+func getNodeScoreByResource(node *cluster.NodeResource) float64 {
+	return float64(node.CpuUB)/float64(node.CpuTotal)*0.7 + float64(node.MemUB)/float64(node.MemTotal)*0.3
+}
+
+/* haverzard */
+// ScaleDown scale down other jobs let high priority job runs.
+// ScaleDown is only called if high priority job exists.
+func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can bool, migrationTarget JobsPlacementPlan) {
+	log.Infof("================= MigrateTask Start =================")
+	defer log.Infof("================== MigrateTask End ==================")
+
+	// Don't modify original one
+	// nodeRes := *constNodeRes.DeepCopy()
+	migrationTarget = make(JobsPlacementPlan)
+	nodeRes := *constNodeRes.DeepCopy()
+	can = false
+
+	// Run over running jobs to free resources
+	for _, runJob := range runningQueue {
+		stop := false
+		request := runJob.ReplicaRequest[tfv1.TFReplicaTypeWorker]
+		// run over each worker but can't delete over max delete count
+		for _, nodeName := range SortNodeFromJob(runJob) {
+			log.Infof("Node name %v", nodeName)
+			plan := (*runJob.ReplicasPlacementPlan[tfv1.TFReplicaTypeWorker])[nodeName]
+			for workerID, worker := range *plan {
+				log.Infof("Worker ID %v", workerID)
+				log.Infof("Worker %v", worker)
+				// Cannot release this resource due to it's critical
+				if !worker.Migration {
+					continue
+				}
+
+				// scale down one worker
+				// res := nodeRes[nodeName]
+				// res.CpuFree += runJobReq.CpuReq
+				// res.MemFree += runJobReq.MemReq
+
+				// if option.KubeShareSupport { // kubeshare/gpu
+				// 	if gpuid, ok := (*worker).Workers[cluster.ResourceKubeShareGPU]; ok {
+				// 		res.GpuFree[gpuid].GPUFreeReq += runJobReq.GpuReq
+				// 		res.GpuFree[gpuid].GPUFreeMem += runJobReq.GpuMemReq
+				// 	}
+				// } else { // nvidia.com/gpu
+				// 	if _, ok := (*worker).Workers[cluster.ResourceNvidiaGPU]; ok {
+				// 		res.GpuFreeCount += int(runJobReq.GpuReq / 1000)
+				// 	}
+				// }
+				// log.Infof("************************************ DEBUG ************************************")
+				// nodeRes.PrintMe()
+				// log.Infof("************************************ DEBUG ************************************")
+
+				// make a temporary copy. apply to origin only if can scale down
+				if _, ok := migrationTarget[runJob]; !ok {
+					migrationTarget[runJob] = runJob.ReplicasPlacementPlan[tfv1.TFReplicaTypeWorker].DeepCopy()
+				}
+
+				// Free resource on source node
+				source := nodeRes[nodeName]
+				source.CpuFree += request.CpuReq
+				source.MemFree += request.MemReq
+				source.CpuUB -= request.CpuUB
+				source.MemUB -= request.MemUB
+
+				if option.KubeShareSupport { // kubeshare/gpu
+					if gpuid, ok := (*worker).Workers[cluster.ResourceKubeShareGPU]; ok {
+						source.GpuFree[gpuid].GPUFreeReq += request.GpuReq
+						source.GpuFree[gpuid].GPUFreeMem += request.GpuMemReq
+					}
+				} else { // nvidia.com/gpu
+					if _, ok := (*worker).Workers[cluster.ResourceNvidiaGPU]; ok {
+						source.GpuFreeCount += int(request.GpuReq / 1000)
+					}
+				}
+
+				// Find best node
+				var bestTargetNodeName string
+				var bestTargetNode *cluster.NodeResource
+				for targetNodeName, targetNode := range nodeRes {
+					if bestTargetNode == nil || getNodeScoreByResource(targetNode) < getNodeScoreByResource(bestTargetNode) {
+						bestTargetNode = targetNode
+						bestTargetNodeName = targetNodeName
+					}
+				}
+				// TODO: do not migrate if the target node is the same as source node
+				if nodeName == bestTargetNodeName {
+					// Subtract resource on target node
+					source.CpuFree -= request.CpuReq
+					source.MemFree -= request.MemReq
+					source.CpuUB += request.CpuUB
+					source.MemUB += request.MemUB
+
+					if option.KubeShareSupport { // kubeshare/gpu
+						if gpuid, ok := (*worker).Workers[cluster.ResourceKubeShareGPU]; ok {
+							source.GpuFree[gpuid].GPUFreeReq -= request.GpuReq
+							source.GpuFree[gpuid].GPUFreeMem -= request.GpuMemReq
+						}
+					} else { // nvidia.com/gpu
+						if _, ok := (*worker).Workers[cluster.ResourceNvidiaGPU]; ok {
+							source.GpuFreeCount -= int(request.GpuReq / 1000)
+						}
+					}
+					worker.Migration = false
+					break
+				}
+
+				// Subtract resource on target node
+				target := nodeRes[nodeName]
+				target.CpuFree -= request.CpuReq
+				target.MemFree -= request.MemReq
+				target.CpuUB += request.CpuUB
+				target.MemUB += request.MemUB
+
+				if option.KubeShareSupport { // kubeshare/gpu
+					if gpuid, ok := (*worker).Workers[cluster.ResourceKubeShareGPU]; ok {
+						target.GpuFree[gpuid].GPUFreeReq -= request.GpuReq
+						target.GpuFree[gpuid].GPUFreeMem -= request.GpuMemReq
+					}
+				} else { // nvidia.com/gpu
+					if _, ok := (*worker).Workers[cluster.ResourceNvidiaGPU]; ok {
+						target.GpuFreeCount -= int(request.GpuReq / 1000)
+					}
+				}
+
+				if _, ok := (*migrationTarget[runJob])[bestTargetNodeName]; !ok {
+					(*migrationTarget[runJob])[bestTargetNodeName] = &NodeResPlacePlan{}
+				}
+
+				t := &WorkerResources{
+					Workers:   map[string]string{},
+					Critical:  false,
+					Migration: true,
+					TargetID:  workerID,
+				}
+				delete((*(*migrationTarget[runJob])[nodeName]), workerID)
+
+				newWorkerID := NewWorkerID(5)
+				(*(*migrationTarget[runJob])[bestTargetNodeName])[newWorkerID] = t
+				log.Infof("Worker %s from Node %s will be migrated as Worker %s at Node %s", workerID, nodeName, newWorkerID, bestTargetNodeName)
+			}
+			if stop {
+				break
+			}
+		}
+	}
+
+	// final test if request can be scheduled
+	// log.Infof("Scale Down schedule test start...")
+	// ok, tmp := ScheduleJob(&([]*cluster.PodRequests{highPriorityJob}), nodeRes)
+
+	// if ok[0] == len(*highPriorityJob) {
+	// 	log.Infof("Scale Down successful!")
+	// 	highPriorityJobPlacementPlan = tmp
+	// 	can = true
+	// 	return
+	// }
+	log.Infof("Migrate Task successful")
+	can = true
 
 	return
 }

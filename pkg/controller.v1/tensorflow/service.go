@@ -78,7 +78,9 @@ func (tc *TFController) reconcileServices(
 
 	for index, val := range deleteLater {
 		if val {
-			n := jobcontroller.GenGeneralName(tfjob.Name, rt, strconv.Itoa(index))
+			/* haverzard */
+			n := jobcontroller.GenGeneralName(tfjob.Name, rt, strconv.Itoa(index), "")
+			/* haverzard */
 			tflogger.LoggerForReplica(tfjob, rt).Infof("Delete service %s", n)
 			tc.ServiceControl.DeleteService(tfjob.Namespace, n, tfjob)
 		}
@@ -129,7 +131,9 @@ func (tc *TFController) createNewService(tfjob *tfv1.TFJob, rtype tfv1.TFReplica
 		},
 	}
 
-	service.Name = jobcontroller.GenGeneralName(tfjob.Name, rt, index)
+	/* haverzard */
+	service.Name = jobcontroller.GenGeneralName(tfjob.Name, rt, index, "")
+	/* haverzard */
 	service.Labels = labels
 
 	err = tc.ServiceControl.CreateServicesWithControllerRef(tfjob.Namespace, service, tfjob, controllerRef)
