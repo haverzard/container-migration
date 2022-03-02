@@ -33,27 +33,24 @@ uninstall-custom:
 	kubectl delete -f https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/v0.9/crd.yaml
 	kubectl delete -f ./config/monitor.yaml
 
-release:
+release-dragon:
 	docker build -t haverzard/dragon:0.0.0 -f docker/DRAGON/Dockerfile .
 	docker push haverzard/dragon:0.0.0
 
 release-api:
-	docker build -t haverzard/monitor-api:0.0.0 -f experiments/monitor-api/Dockerfile experiments/monitor-api/
-	docker push haverzard/monitor-api:0.0.0
-
-release-api-v2:
-	docker build -t haverzard/monitor-api:go-0.0.1 -f experiments/monitor-api-v2/Dockerfile experiments/monitor-api-v2/
-	docker push haverzard/monitor-api:go-0.0.1
+	docker build -t haverzard/monitor-api:$(VERSION) -f experiments/monitor-api/Dockerfile experiments/monitor-api/
+	docker push haverzard/monitor-api:$(VERSION)
 
 release-tf-image:
-	docker build -t haverzard/tf-image:0.0.0 -f experiments/jobs/Dockerfile experiments/jobs/
-	docker push haverzard/tf-image:0.0.0
+	docker build -t haverzard/tf-image:$(VERSION) -f experiments/tensorflow-savestate/Dockerfile experiments/jobs/
+	docker push haverzard/tf-image:$(VERSION)
 
-init-cluster:
+init-local-cluster:
 	minikube start --nodes 3 -p ta-playground
+	minikube start --nodes 1 -p ta-playground --kubernetes-version=v.1.19.16
 	minikube addons enable metrics-server -p ta-playground
 
-delete-cluster:
+delete-local-cluster:
 	minikube stop -p ta-playground
 
 test:

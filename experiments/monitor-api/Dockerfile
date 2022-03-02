@@ -1,11 +1,13 @@
-FROM node:14-slim
+FROM golang:1.17 AS build
 
-WORKDIR /app
-
-COPY package.json .
-RUN npm install
+WORKDIR /go/src/monitor-api
 
 COPY . .
-RUN npm run build
 
-CMD ["npm", "run", "start"]
+RUN GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/server ./cmd/server.go
+
+FROM alpine:3.9
+
+COPY --from=build /go/src/monitor-api/bin/server .
+
+CMD ["./server"]
