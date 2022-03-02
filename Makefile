@@ -53,6 +53,9 @@ init-local-cluster:
 delete-local-cluster:
 	minikube stop -p ta-playground
 
+gen-tc:
+	./cmd/generate-tc.sh $(URL) $(MAX_REPLICAS) $(MIN_REPLICAS) $(INIT_REPLICAS) $(TOTAL_JOBS)
+
 test:
 	kubectl apply -f experiments/jobs/job1-v2.yaml
 	kubectl apply -f experiments/jobs/job2-v2.yaml
