@@ -1,4 +1,4 @@
-FROM golang:1.13 AS build
+FROM golang:1.17 AS build
 
 WORKDIR /go/src/monitor-api
 

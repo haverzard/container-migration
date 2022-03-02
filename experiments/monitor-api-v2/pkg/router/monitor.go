@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/haverzard/ta/pkg/controller"
 	"github.com/haverzard/ta/pkg/model"
@@ -25,14 +26,16 @@ func RegisterMonitorRouter(mr *MonitorRouter) {
 }
 
 func (mr *MonitorRouter) DecideMigration(pod *model.Pod) {
-	// originalCategory := pod.Category
+	// speculate the task's category
 	pod.Speculate()
+	// 3s grace period before doing another migration attempt
+	// to avoid spamming the queue
+	if !pod.LastMigration.IsZero() && time.Now().Unix()-pod.LastMigration.Unix() < 3 {
+		return
+	}
 	// log.Printf("Speculated Category: %v, Original: %v", pod.Category, originalCategory)
 	if pod.Category == model.Converged || mr.NodeCtl.IsOverload() {
-		if pod.NextRetry != 0 {
-			pod.NextRetry--
-			return
-		}
+		pod.LastMigration = time.Now()
 		log.Printf("Migrating pod %v with category %v", pod.Name, pod.Category)
 		body, err := json.Marshal(map[string]string{
 			"pod":  pod.Name,
@@ -42,7 +45,6 @@ func (mr *MonitorRouter) DecideMigration(pod *model.Pod) {
 			log.Fatalf("Error on Migration: %v", err)
 		}
 		http.Post(utils.SERVER_ENDPOINT+"/migrate", "application/json", bytes.NewBuffer(body))
-		pod.NextRetry = 20
 	}
 }
 

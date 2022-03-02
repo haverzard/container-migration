@@ -1,23 +1,42 @@
 package model
 
 import (
+	"fmt"
+	"log"
+	"math"
+	"sync"
 	"time"
 
-	"github.com/haverzard/ta/pkg/utils"
 	"github.com/oleiade/lane"
+	"github.com/sajari/regression"
 )
 
 type Pod struct {
-	Name        string
-	Score       float64
-	NextRetry   int64
-	AccessedAt  time.Time
-	Category    PodCategory
-	Evaluations *lane.Queue
+	Name          string
+	Score         float64
+	CreatedAt     time.Time
+	LastMigration time.Time
+	AccessedAt    time.Time
+	Category      PodCategory
+	Evaluations   *lane.Queue
+	Regressor     *regression.Regression
+	mu            sync.Mutex
 }
 
 func NewPod(name string) *Pod {
-	return &Pod{Name: name, Score: 0, AccessedAt: time.Now(), Category: Progressing, Evaluations: lane.NewQueue()}
+	t := time.Now()
+	r := new(regression.Regression)
+	r.SetObserved("log y")
+	r.SetVar(0, "t")
+	return &Pod{
+		Name:        name,
+		Score:       0,
+		CreatedAt:   t,
+		AccessedAt:  t,
+		Category:    Progressing,
+		Evaluations: lane.NewQueue(),
+		Regressor:   r,
+	}
 }
 
 func (pod *Pod) Speculate() {
@@ -28,44 +47,54 @@ func (pod *Pod) Speculate() {
 	}
 
 	// Only speculate using latest two
+	pod.mu.Lock()
 	for ; n > 2; n-- {
 		pod.Evaluations.Pop()
 	}
-	oldest := pod.Evaluations.Pop().(*PodEvaluation)
-	newest := pod.Evaluations.First().(*PodEvaluation)
+	eval1 := pod.Evaluations.Pop().(*PodEvaluation)
+	eval2 := pod.Evaluations.First().(*PodEvaluation)
+	pod.mu.Unlock()
 
 	// Find differences
-	t1 := float64(oldest.Time.UnixNano() / 1000000)
-	t2 := float64(newest.Time.UnixNano() / 1000000)
+	t1 := float64(eval1.Time.UnixMilli())
+	t2 := float64(eval2.Time.UnixMilli())
+	t0 := float64(pod.CreatedAt.UnixMilli())
 	// dt := float64((newest.Time.UnixNano() + oldest.Time.UnixNano()) / 1000000)
 
-	// How many percentage do the metric & time change?
-	time_score := (t2 - t1) / t1
-	metric_score := (newest.Metric - oldest.Metric) / oldest.Metric
-
 	// Get score
-	score := (metric_score - time_score)
+	score := math.Abs((eval2.Metric - eval1.Metric) / (t2 - t1))
+	alpha := float64(0.0)
+	beta := float64(0.0)
 
-	oldCategory := pod.Category
-	dscore := score - pod.Score
+	pod.Regressor.Train(regression.DataPoint(math.Log(score)/math.Log(math.E), []float64{t2 - t0}))
+	if err := pod.Regressor.Run(); err == nil {
+		alpha, err = pod.Regressor.Predict([]float64{t2 - t0})
+		if err != nil {
+			log.Fatalln(err)
+			return
+		}
+		alpha = math.Exp(alpha)
+		fmt.Println(alpha)
+		beta = 1 - pod.Regressor.R2
+	}
 
 	// log.Printf("Time: %v, Score: %v, dScore: %v", dt, score, dscore)
 	// log.Printf("Test %v", utils.PROGRESSING_THREESHOLD)
 	// SpeCon + Custom categorization
-	if dscore > utils.PROGRESSING_THREESHOLD {
+	if score > alpha {
 		pod.Category = Progressing
-	} else if dscore < utils.CONVERGED_THREESHOLD {
+	} else {
 		if pod.Category == Progressing {
 			pod.Category = Watching
-		} else {
+		} else if score+score*beta < pod.Score {
 			pod.Category = Converged
 		}
 	}
-	if oldCategory != pod.Category {
-		pod.Score = score
-	}
+	pod.Score = score
 }
 
 func (pod *Pod) AddEvaluation(eval *EvaluationObject) {
+	pod.mu.Lock()
 	pod.Evaluations.Enqueue(&PodEvaluation{Metric: eval.Value, Time: time.Now()})
+	pod.mu.Unlock()
 }

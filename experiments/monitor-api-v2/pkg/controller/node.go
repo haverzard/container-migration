@@ -78,7 +78,7 @@ func (nc *NodeController) IsOverload() bool {
 		sum = dx * dx
 	}
 	std := math.Sqrt(sum / float64(n))
-	return ((nodeScore - mean) / std) > utils.OVERLOAD_THREESHOLD
+	return (nodeScore - mean) > (utils.OVERLOAD_THREESHOLD * std)
 
 	// for nodeName, nodeRes := range *nodeResources {
 	// 	if nodeName != utils.NODE_NAME {
