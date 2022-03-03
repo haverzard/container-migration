@@ -25,12 +25,12 @@ uninstall:
 
 install-custom:
 	kubectl create -f ./config/monitor.yaml
-	kubectl create -f https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/v0.9/crd.yaml
+	kubectl create -f ./config/crd.yaml
 	kubectl create -f ./config/dragon.yaml
 
 uninstall-custom:
 	kubectl delete -f ./config/dragon.yaml
-	kubectl delete -f https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/v0.9/crd.yaml
+	kubectl delete -f ./config/crd.yaml
 	kubectl delete -f ./config/monitor.yaml
 
 release-dragon:
