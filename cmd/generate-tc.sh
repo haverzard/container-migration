@@ -1,17 +1,13 @@
 #!/bin/bash
-url=$1
-upper_bound="${2:=1}"
-lower_bound="${3:=1}"
-init_replicas="${4:=1}"
-total_jobs="${5:=3}"
+url="${1:-https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON}"
+upper_bound="${2:-1}"
+lower_bound="${3:-1}"
+init_replicas="${4:-1}"
+total_jobs="${5:-3}"
 
-if [[$upper_bound < $lower_bound]] then
-  exit
-fi
-
-for id in {1..$total_jobs}
+for (( id=1; id<=$total_jobs; id++ ))
 do
-cat <<EOT >> experiments/jobs/job$id.yaml
+cat <<EOT > experiments/jobs/job$id.yaml
 apiVersion: kubeflow.org/v1
 kind: TFJob
 metadata:
