@@ -53,6 +53,10 @@ init-local-cluster:
 delete-local-cluster:
 	minikube stop -p ta-playground
 
+MAX_REPLICAS ?= 1
+MIN_REPLICAS ?= 1
+INIT_REPLICAS ?= 1
+TOTAL_JOBS ?= 3
 gen-tc:
 	./cmd/generate-tc.sh $(URL) $(MAX_REPLICAS) $(MIN_REPLICAS) $(INIT_REPLICAS) $(TOTAL_JOBS)
 
