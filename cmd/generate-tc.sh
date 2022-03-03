@@ -25,7 +25,7 @@ spec:
           terminationGracePeriodSeconds: 0
           containers:
           - name: tensorflow
-            image: tensorflow/tensorflow:1.15.0-py3
+            image: haverzard/tf-image:0.0.0
             command: ["/bin/bash", "-c", "curl -s $url/mnist-df.py | python3 -"]
             ports:
             - containerPort: 2222
@@ -33,10 +33,10 @@ spec:
             resources:
               requests:
                 cpu: "500m"
-                memory: "512Mi"
+                memory: "2Gi"
               limits:
                 cpu: "1"
-                memory: "1Gi"
+                memory: "2Gi"
     Worker:
       replicas: $init_replicas
       restartPolicy: OnFailure
@@ -45,21 +45,29 @@ spec:
           terminationGracePeriodSeconds: 0
           containers:
           - name: tensorflow
-            image: tensorflow/tensorflow:1.15.0-py3
+            image: haverzard/tf-image:0.0.0
             command: ["/bin/bash", "-c", "curl -s $url/mnist-df.py | python3 -"]
             env:
             - name: "global_steps"
-              value: "10000"
+              value: "500"
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
             ports:
             - containerPort: 2222
               name: tfjob-port
             resources:
               requests:
                 cpu: "500m"
-                memory: "512Mi"
+                memory: "1Gi"
               limits:
                 cpu: "1"
-                memory: "1Gi"
+                memory: "2Gi"
 EOT
 done
 
