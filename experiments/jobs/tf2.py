@@ -2,15 +2,14 @@ import argparse
 import sys
 import os
 import ast
+import time
 import tensorflow as tf
-from tensorflow.core.util.event_pb2 import SessionLog
-from tensorflow.python.training.summary_io import SummaryWriterCache
 import numpy as np
+import requests
 
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
 x_train = x_train.reshape(-1, x_train.shape[-1] * x_train.shape[-2])
 y_train = np.eye(10)[y_train]
-
 
 class Empty:
     pass
@@ -18,37 +17,24 @@ class Empty:
 
 FLAGS = Empty()
 
+
 tf.compat.v1.disable_eager_execution()
 
+def dataset_fn(input_context):
+  global_batch_size = 64
+  batch_size = input_context.get_per_replica_batch_size(global_batch_size)
 
-def save(session, step, saver, summary_writer):
-    """Saves the latest checkpoint, returns should_stop."""
-    # logging.info("Calling checkpoint listeners before saving checkpoint %d...", step)
-    # for l in self._listeners:
-    #     l.before_save(session, step)
+  x = tf.random.uniform((10, 10))
+  y = tf.random.uniform((10,))
 
-    # logging.info("Saving checkpoints for %d into %s.", step, self._save_path)
-    save_path = os.path.join(FLAGS.checkpoint_dir, FLAGS.checkpoint_basename)
-    saver.save(
-        session,
-        save_path,
-        global_step=step,
-        write_meta_graph=True,
-    )
-    summary_writer.add_session_log(
-        SessionLog(status=SessionLog.CHECKPOINT, checkpoint_path=save_path),
-        step,
-    )
-    # logging.info("Calling checkpoint listeners after saving checkpoint %d...", step)
-    # should_stop = False
-    # for l in self._listeners:
-    #     if l.after_save(session, step):
-    #         logging.info(
-    #             "A CheckpointSaverListener requested that training be stopped. "
-    #             "listener: {}".format(l)
-    #         )
-    #         should_stop = True
-    # return should_stop
+  dataset = tf.data.Dataset.from_tensor_slices((x, y)).shuffle(10).repeat()
+  dataset = dataset.shard(
+      input_context.num_input_pipelines,
+      input_context.input_pipeline_id)
+  dataset = dataset.batch(batch_size)
+  dataset = dataset.prefetch(2)
+
+  return dataset
 
 
 def main(_):
@@ -62,11 +48,17 @@ def main(_):
     server = tf.compat.v1.distribute.Server(
         cluster, job_name=FLAGS.job_name, task_index=FLAGS.task_index
     )
-    print("START")
+    cluster_resolver = tf.distribute.cluster_resolver.SimpleClusterResolver(
+        cluster, rpc_layer="grpc", task_type=FLAGS.job_name, task_id=FLAGS.task_index
+    )
+    strategy = tf.distribute.experimental.ParameterServerStrategy(
+        cluster_resolver
+    )
+
     if FLAGS.job_name == "ps":
         server.join()
     elif FLAGS.job_name == "worker":
-        print("WORKER RUN")
+
         # Assigns ops to the local worker by default.
         with tf.compat.v1.device(
             tf.compat.v1.train.replica_device_setter(
@@ -91,11 +83,16 @@ def main(_):
             train_step = tf.compat.v1.train.GradientDescentOptimizer(
                 learning_rate
             ).minimize(cross_entropy, global_step=global_step)
+            acc, acc_op = tf.compat.v1.metrics.accuracy(
+                labels=tf.argmax(y_, axis=1), predictions=tf.argmax(y, 1)
+            )
 
+        with strategy.scope():
+            print(type(strategy), hasattr(strategy, "distribute_datasets_from_function"))
+            dc = strategy.distribute_datasets_from_function(dataset_fn)
+            print(dc)
+        tf.compat.v1.enable_eager_execution()
         # The StopAtStepHook handles stopping after running given steps.
-        saver = tf.compat.v1.train.Saver(max_to_keep=10)
-        summary_writer = SummaryWriterCache.get(FLAGS.checkpoint_dir)
-        scaffold = tf.compat.v1.train.Scaffold(saver=saver)
         hooks = [
             tf.compat.v1.train.StopAtStepHook(last_step=FLAGS.global_steps),
         ]
@@ -109,8 +106,6 @@ def main(_):
             config=tf.compat.v1.ConfigProto(
                 device_filters=["/job:ps", "/job:worker/task:%d" % FLAGS.task_index]
             ),
-            scaffold=scaffold,
-            checkpoint_dir=FLAGS.checkpoint_dir,
             hooks=hooks,
         ) as mon_sess:
             while not mon_sess.should_stop():
@@ -118,7 +113,17 @@ def main(_):
                 _, step = mon_sess.run(
                     [train_step, global_step], feed_dict={x: batch_xs, y_: batch_ys}
                 )
-                # save(mon_sess._sess._sess._sess._sess, step, saver, summary_writer)
+                if not mon_sess.should_stop():
+                    batch_xs, batch_ys = x_train[:16], y_train[:16]
+                    accuracy = mon_sess.run(
+                        acc_op, feed_dict={x: batch_xs, y_: batch_ys}
+                    )
+                    sys.stderr.write("accuracy: " + str(accuracy) + "\n")
+                    # requests.post(
+                    #     FLAGS.monitoring_api + "/monitor",
+                    #     headers={"Content-Type": "application/json"},
+                    #     json={"pod": FLAGS.pod_name, "value": float(accuracy)},
+                    # )
             # sys.stderr.write('global_step: '+str(step))
             # sys.stderr.write('\n')
 
@@ -134,4 +139,8 @@ if __name__ == "__main__":
     FLAGS.global_steps = (
         int(os.environ["global_steps"]) if "global_steps" in os.environ else 100000
     )
+    FLAGS.monitoring_api = (
+        (f"http://{os.environ['NODE_IP']}:8081") if "NODE_IP" in os.environ else None
+    )
+    FLAGS.pod_name = os.getenv("POD_NAME", None)
     tf.compat.v1.app.run(main=main, argv=[sys.argv[0]])
