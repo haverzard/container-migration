@@ -34,7 +34,7 @@ uninstall-custom:
 	kubectl delete -f ./deployments/kubernetes/monitor.yaml
 
 release-dragon:
-	docker build -t haverzard/dragon:0.0.0 -f docker/DRAGON/Dockerfile .
+	docker build -t haverzard/dragon:0.0.0 -f ./deployments/docker/DRAGON/Dockerfile .
 	docker push haverzard/dragon:0.0.0
 
 release-api:
