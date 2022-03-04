@@ -4,6 +4,7 @@ GO_MODULE=GO111MODULE=on
 BIN_DIR=bin/
 ALPINE_COMPILE_FLAGS=CGO_ENABLED=0 GOOS=linux GOARCH=amd64
 PACKAGE_PREFIX=github.com/NTHU-LSALAB/DRAGON/cmd/
+TF_IMAGE_VERSION=0.0.0
 
 .PHONY: all clean $(TARGET)
 
@@ -42,8 +43,8 @@ release-api:
 	docker push haverzard/monitor-api:$(VERSION)
 
 release-tf-image:
-	docker build -t haverzard/tf-image:$(VERSION) -f ./deployments/docker/tf-image/Dockerfile .
-	docker push haverzard/tf-image:$(VERSION)
+	docker build -t haverzard/tf-image:$(TF_IMAGE_VERSION) -f ./deployments/docker/tf-image/Dockerfile .
+	docker push haverzard/tf-image:$(TF_IMAGE_VERSION)
 
 init-local-cluster:
 	minikube start --nodes 3 -p ta-playground
@@ -58,7 +59,7 @@ MIN_REPLICAS ?= 1
 INIT_REPLICAS ?= 1
 TOTAL_JOBS ?= 3
 gen-tc:
-	./scripts/generate-tc.sh $(URL) $(MAX_REPLICAS) $(MIN_REPLICAS) $(INIT_REPLICAS) $(TOTAL_JOBS)
+	TF_IMAGE_VERSION=$(TF_IMAGE_VERSION) ./scripts/generate-tc.sh $(URL) $(MAX_REPLICAS) $(MIN_REPLICAS) $(INIT_REPLICAS) $(TOTAL_JOBS)
 
 test:
 	kubectl apply -f ./deployments/kubernetes/jobs/job1.yaml

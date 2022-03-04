@@ -25,7 +25,7 @@ spec:
           terminationGracePeriodSeconds: 0
           containers:
           - name: tensorflow
-            image: haverzard/tf-image:0.0.0
+            image: haverzard/tf-image:$TF_IMAGE_VERSION
             command: ["/bin/bash", "-c", "curl -s $url/mnist-df.py | python3 -"]
             ports:
             - containerPort: 2222
@@ -45,7 +45,7 @@ spec:
           terminationGracePeriodSeconds: 0
           containers:
           - name: tensorflow
-            image: haverzard/tf-image:0.0.0
+            image: haverzard/tf-image:$TF_IMAGE_VERSION
             command: ["/bin/bash", "-c", "curl -s $url/mnist-df.py | python3 -"]
             env:
             - name: "global_steps"
