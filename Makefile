@@ -58,7 +58,7 @@ MIN_REPLICAS ?= 1
 INIT_REPLICAS ?= 1
 TOTAL_JOBS ?= 3
 gen-tc:
-	./cmd/generate-tc.sh $(URL) $(MAX_REPLICAS) $(MIN_REPLICAS) $(INIT_REPLICAS) $(TOTAL_JOBS)
+	./scripts/generate-tc.sh $(URL) $(MAX_REPLICAS) $(MIN_REPLICAS) $(INIT_REPLICAS) $(TOTAL_JOBS)
 
 test:
 	kubectl apply -f experiments/jobs/job1-v2.yaml
