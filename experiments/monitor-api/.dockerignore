@@ -1,0 +1,13 @@
+# Commons
+.gitignore
+Dockerfile
+
+# Node
+node_modules/
+*.lock
+
+# Outputs
+dist/
+
+# Test
+spec/
