@@ -24,14 +24,14 @@ uninstall:
 	kubectl delete -f https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/v0.9/crd.yaml
 
 install-custom:
-	kubectl create -f ./config/monitor.yaml
-	kubectl create -f ./crd/v1.yaml
-	kubectl create -f ./config/dragon.yaml
+	kubectl create -f ./deployments/kubernetes/monitor.yaml
+	kubectl create -f ./deployments/kubernetes/crd.yaml
+	kubectl create -f ./deployments/kubernetes/dragon.yaml
 
 uninstall-custom:
-	kubectl delete -f ./config/dragon.yaml
-	kubectl delete -f ./crd/v1.yaml
-	kubectl delete -f ./config/monitor.yaml
+	kubectl delete -f ./deployments/kubernetes/dragon.yaml
+	kubectl delete -f ./deployments/kubernetes/crd.yaml
+	kubectl delete -f ./deployments/kubernetes/monitor.yaml
 
 release-dragon:
 	docker build -t haverzard/dragon:0.0.0 -f docker/DRAGON/Dockerfile .
