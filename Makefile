@@ -42,7 +42,7 @@ release-api:
 	docker push haverzard/monitor-api:$(VERSION)
 
 release-tf-image:
-	docker build -t haverzard/tf-image:$(VERSION) -f experiments/tensorflow-savestate/Dockerfile experiments/jobs/
+	docker build -t haverzard/tf-image:$(VERSION) -f ./deployments/docker/tf-image/Dockerfile .
 	docker push haverzard/tf-image:$(VERSION)
 
 init-local-cluster:
@@ -61,11 +61,11 @@ gen-tc:
 	./scripts/generate-tc.sh $(URL) $(MAX_REPLICAS) $(MIN_REPLICAS) $(INIT_REPLICAS) $(TOTAL_JOBS)
 
 test:
-	kubectl apply -f experiments/jobs/job1-v2.yaml
-	kubectl apply -f experiments/jobs/job2-v2.yaml
-	kubectl apply -f experiments/jobs/job3-v2.yaml
+	kubectl apply -f ./deployments/kubernetes/jobs/job1.yaml
+	kubectl apply -f ./deployments/kubernetes/jobs/job2.yaml
+	kubectl apply -f ./deployments/kubernetes/jobs/job3.yaml
 
 reset:
-	kubectl delete -f experiments/jobs/job1-v2.yaml
-	kubectl delete -f experiments/jobs/job2-v2.yaml
-	kubectl delete -f experiments/jobs/job3-v2.yaml
+	kubectl delete -f ./deployments/kubernetes/jobs/job1.yaml
+	kubectl delete -f ./deployments/kubernetes/jobs/job2.yaml
+	kubectl delete -f ./deployments/kubernetes/jobs/job3.yaml

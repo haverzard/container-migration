@@ -7,7 +7,7 @@ total_jobs="${5:-3}"
 
 for (( id=1; id<=$total_jobs; id++ ))
 do
-cat <<EOT > experiments/jobs/job$id.yaml
+cat <<EOT > deployments/kubernetes/jobs/job$id.yaml
 apiVersion: kubeflow.org/v1
 kind: TFJob
 metadata:
