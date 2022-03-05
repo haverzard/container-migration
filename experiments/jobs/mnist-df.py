@@ -149,16 +149,15 @@ def main(_):
                 )
                 batches += 1
                 if not mon_sess.should_stop() and batches % FLAGS.batch_interval == 0:
-                    batch_xs, batch_ys = mnist.test.next_batch(128)
+                    batch_xs, batch_ys = mnist.test.next_batch(16)
                     accuracy = mon_sess.run(
                         acc_op, feed_dict={x: batch_xs, y_exp: batch_ys}
                     )
-                    sys.stderr.write("accuracy: " + str(accuracy) + "\n")
-                    # requests.post(
-                    #     FLAGS.monitoring_api + "/monitor",
-                    #     headers={"Content-Type": "application/json"},
-                    #     json={"pod": FLAGS.pod_name, "value": float(accuracy)},
-                    # )
+                    requests.post(
+                        FLAGS.monitoring_api + "/monitor",
+                        headers={"Content-Type": "application/json"},
+                        json={"pod": FLAGS.pod_name, "value": float(accuracy)},
+                    )
                 # sys.stderr.write('global_step: '+str(step))
                 # sys.stderr.write('\n')
 
