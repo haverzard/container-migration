@@ -5,31 +5,33 @@ import ast
 import requests
 
 from tensorflow.examples.tutorials.mnist import input_data
+
 mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
 mnist.train._images = mnist.train._images.reshape(-1, 28, 28, 1)
 mnist.test._images = mnist.test._images.reshape(-1, 28, 28, 1)
 import tensorflow as tf
 
+
 class Empty:
     pass
+
 
 def conv2d(x, W, b, strides=1):
     # Conv2D wrapper, with bias and relu activation
     x = tf.nn.conv2d(x, W, strides=[1, strides, strides, 1], padding="VALID")
     x = tf.nn.bias_add(x, b)
-    mean_x, std_x = tf.nn.moments(x, axes = [0, 1, 2], keep_dims=True)
+    mean_x, std_x = tf.nn.moments(x, axes=[0, 1, 2], keep_dims=True)
     x = tf.nn.batch_normalization(x, mean_x, std_x, 0, 1, 0.001)
     return tf.nn.relu(x)
 
-# def maxpool2d(x, k=2):
-#     return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1],padding='SAME')
 
 FLAGS = Empty()
+
 
 def main(_):
     ps_hosts = FLAGS.ps_hosts.split(",")
     worker_hosts = FLAGS.worker_hosts.split(",")
-    
+
     # Create a cluster from the parameter server and worker hosts.
     cluster = tf.train.ClusterSpec({"ps": ps_hosts, "worker": worker_hosts})
 
@@ -45,27 +47,62 @@ def main(_):
         # Assigns ops to the local worker by default.
         with tf.device(
             tf.train.replica_device_setter(
-                worker_device="/job:worker/task:%d" % FLAGS.task_index,
-                cluster=cluster
+                worker_device="/job:worker/task:%d" % FLAGS.task_index, cluster=cluster
             )
         ):
 
             # Build model...
-            x = tf.placeholder(tf.float32, [None,28,28,1])
+            x = tf.placeholder(tf.float32, [None, 28, 28, 1])
             y_exp = tf.placeholder(tf.float32, [None, 10])
-            
-            W0 = tf.get_variable('W0', shape=(5,5,1,32), initializer=tf.contrib.layers.xavier_initializer())
-            W1 = tf.get_variable('W1', shape=(5,5,32,64), initializer=tf.contrib.layers.xavier_initializer())
-            W2 = tf.get_variable('W2', shape=(5,5,64,96), initializer=tf.contrib.layers.xavier_initializer())
-            W3 = tf.get_variable('W3', shape=(5,5,96,128), initializer=tf.contrib.layers.xavier_initializer())
-            W4 = tf.get_variable('W4', shape=(5,5,128,160), initializer=tf.contrib.layers.xavier_initializer())
-            W5 = tf.get_variable('W5', shape=(10240,10), initializer=tf.contrib.layers.xavier_initializer())
-            b0 = tf.get_variable('B0', shape=(32), initializer=tf.contrib.layers.xavier_initializer())
-            b1 = tf.get_variable('B1', shape=(64), initializer=tf.contrib.layers.xavier_initializer())
-            b2 = tf.get_variable('B2', shape=(96), initializer=tf.contrib.layers.xavier_initializer())
-            b3 = tf.get_variable('B3', shape=(128), initializer=tf.contrib.layers.xavier_initializer())
-            b4 = tf.get_variable('B4', shape=(160), initializer=tf.contrib.layers.xavier_initializer())
-            b5 = tf.get_variable('B5', shape=(10), initializer=tf.contrib.layers.xavier_initializer())
+
+            W0 = tf.get_variable(
+                "W0",
+                shape=(5, 5, 1, 32),
+                initializer=tf.contrib.layers.xavier_initializer(),
+            )
+            W1 = tf.get_variable(
+                "W1",
+                shape=(5, 5, 32, 64),
+                initializer=tf.contrib.layers.xavier_initializer(),
+            )
+            W2 = tf.get_variable(
+                "W2",
+                shape=(5, 5, 64, 96),
+                initializer=tf.contrib.layers.xavier_initializer(),
+            )
+            W3 = tf.get_variable(
+                "W3",
+                shape=(5, 5, 96, 128),
+                initializer=tf.contrib.layers.xavier_initializer(),
+            )
+            W4 = tf.get_variable(
+                "W4",
+                shape=(5, 5, 128, 160),
+                initializer=tf.contrib.layers.xavier_initializer(),
+            )
+            W5 = tf.get_variable(
+                "W5",
+                shape=(10240, 10),
+                initializer=tf.contrib.layers.xavier_initializer(),
+            )
+            b0 = tf.get_variable(
+                "B0", shape=(32), initializer=tf.contrib.layers.xavier_initializer()
+            )
+            b1 = tf.get_variable(
+                "B1", shape=(64), initializer=tf.contrib.layers.xavier_initializer()
+            )
+            b2 = tf.get_variable(
+                "B2", shape=(96), initializer=tf.contrib.layers.xavier_initializer()
+            )
+            b3 = tf.get_variable(
+                "B3", shape=(128), initializer=tf.contrib.layers.xavier_initializer()
+            )
+            b4 = tf.get_variable(
+                "B4", shape=(160), initializer=tf.contrib.layers.xavier_initializer()
+            )
+            b5 = tf.get_variable(
+                "B5", shape=(10), initializer=tf.contrib.layers.xavier_initializer()
+            )
 
             conv1 = conv2d(x, W0, b0)
             conv2 = conv2d(conv1, W1, b1)
@@ -73,7 +110,7 @@ def main(_):
             conv4 = conv2d(conv3, W3, b3)
             conv5 = conv2d(conv4, W4, b4)
 
-            fc1 = tf.reshape(conv5, [-1,10240])
+            fc1 = tf.reshape(conv5, [-1, 10240])
             fc1 = tf.add(tf.matmul(fc1, W5), b5)
 
             y_obv = tf.nn.softmax(fc1)
@@ -90,7 +127,7 @@ def main(_):
             )
 
         # The StopAtStepHook handles stopping after running given steps.
-        hooks=[tf.train.StopAtStepHook(last_step=FLAGS.global_steps)]
+        hooks = [tf.train.StopAtStepHook(last_step=FLAGS.global_steps)]
 
         # The MonitoredTrainingSession takes care of session initialization,
         # restoring from a checkpoint, saving to a checkpoint, and closing when done
@@ -111,7 +148,7 @@ def main(_):
                     [train_step, global_step], feed_dict={x: batch_xs, y_exp: batch_ys}
                 )
                 batches += 1
-                if batches % FLAGS.batch_interval == 0:
+                if not mon_sess.should_stop() and batches % FLAGS.batch_interval == 0:
                     batch_xs, batch_ys = mnist.test.next_batch(128)
                     accuracy = mon_sess.run(
                         acc_op, feed_dict={x: batch_xs, y_exp: batch_ys}
@@ -133,7 +170,9 @@ if __name__ == "__main__":
     FLAGS.task_index = TF_CONFIG["task"]["index"]
     FLAGS.ps_hosts = ",".join(TF_CONFIG["cluster"]["ps"])
     FLAGS.worker_hosts = ",".join(TF_CONFIG["cluster"]["worker"])
-    FLAGS.global_steps = int(os.environ["global_steps"]) if "global_steps" in os.environ else 100000
+    FLAGS.global_steps = (
+        int(os.environ["global_steps"]) if "global_steps" in os.environ else 100000
+    )
     FLAGS.monitoring_api = (
         (f"http://{os.environ['NODE_IP']}:8081") if "NODE_IP" in os.environ else None
     )
