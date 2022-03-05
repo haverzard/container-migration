@@ -288,7 +288,7 @@ func (tc *TFController) processNextWorkItem() bool {
 				plan := (*runJob.ReplicasPlacementPlan[tfv1.TFReplicaTypeWorker])
 				if workers, ok := plan[migrationObj.Node]; ok {
 					log.Infof("Workers: %v", workers)
-					if worker, ok := (*workers)[workerId]; ok {
+					if worker, ok := (*workers)[workerId]; ok && worker.TotalMigrations < 3 {
 						worker.Migration = true
 					}
 				}

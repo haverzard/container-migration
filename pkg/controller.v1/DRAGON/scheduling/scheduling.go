@@ -247,10 +247,11 @@ func (this *NodeResPlacePlan) PrintMe(prefix string) {
 
 type WorkerResources struct {
 	// ResourceName => ResourceId
-	Workers   map[string]string
-	Critical  bool
-	Migration bool
-	TargetID  string
+	Workers         map[string]string
+	Critical        bool
+	Migration       bool
+	TotalMigrations uint
+	TargetID        string
 }
 
 func (this *WorkerResources) DeepCopy() *WorkerResources {
@@ -1069,7 +1070,7 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 						bestTargetNodeName = targetNodeName
 					}
 				}
-				// TODO: do not migrate if the target node is the same as source node
+				// Do not migrate if the target node is the same as source node
 				if nodeName == bestTargetNodeName {
 					// Subtract resource on target node
 					source.CpuFree -= request.CpuReq
@@ -1088,7 +1089,7 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 						}
 					}
 					worker.Migration = false
-					break
+					continue
 				}
 
 				// Subtract resource on target node
@@ -1114,10 +1115,11 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 				}
 
 				t := &WorkerResources{
-					Workers:   map[string]string{},
-					Critical:  false,
-					Migration: true,
-					TargetID:  workerID,
+					Workers:         map[string]string{},
+					Critical:        false,
+					Migration:       true,
+					TotalMigrations: worker.TotalMigrations + 1,
+					TargetID:        workerID,
 				}
 				delete((*(*migrationTarget[runJob])[nodeName]), workerID)
 
