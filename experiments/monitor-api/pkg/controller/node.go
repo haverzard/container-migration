@@ -12,7 +12,7 @@ import (
 )
 
 func getNodeScoreByResource(node *model.NodeResource) float64 {
-	return float64(node.CpuUB)/float64(node.CpuTotal)*0.7 + float64(node.MemUB)/float64(node.MemTotal)*0.3
+	return float64(node.CpuMaxRequest)/float64(node.CpuTotal)*0.7 + float64(node.MemMaxRequest)/float64(node.MemTotal)*0.3
 }
 
 type NodeController struct {
