@@ -17,12 +17,12 @@ clean:
 	rm -r bin 2>/dev/null; exit 0
 
 install:
-	kubectl create -f https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/v0.9/crd.yaml
-	kubectl create -f https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/v0.9/dragon.yaml
+	kubectl create -f ./deployments/kubernetes/crd.yaml
+	kubectl create -f ./deployments/kubernetes/dragon-orig.yaml
 
 uninstall:
-	kubectl delete -f https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/v0.9/dragon.yaml
-	kubectl delete -f https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/v0.9/crd.yaml
+	kubectl delete -f ./deployments/kubernetes/dragon-orig.yaml
+	kubectl delete -f ./deployments/kubernetes/crd.yaml
 
 install-custom:
 	kubectl create -f ./deployments/kubernetes/monitor.yaml
