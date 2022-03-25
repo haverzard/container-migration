@@ -2,9 +2,12 @@ package scheduling
 
 import (
 	"bytes"
+	crand "crypto/rand"
 	"fmt"
 	"math"
+	"math/big"
 	"math/rand"
+	"reflect"
 	"strconv"
 	"sync"
 	"time"
@@ -1062,16 +1065,26 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 				}
 
 				// Find best node
-				var bestTargetNodeName string
-				var bestTargetNode *cluster.NodeResource
-				for targetNodeName, targetNode := range nodeRes {
-					if bestTargetNode == nil || getNodeScoreByResource(targetNode) < getNodeScoreByResource(bestTargetNode) {
-						bestTargetNode = targetNode
-						bestTargetNodeName = targetNodeName
+				candidates := []string{reflect.ValueOf(nodeRes).MapKeys()[0].String()}
+				bestScore := getNodeScoreByResource(nodeRes[candidates[0]])
+				for targetName, targetNode := range nodeRes {
+					score := getNodeScoreByResource(targetNode)
+					if score == bestScore {
+						candidates = append(candidates, targetName)
+					} else if score < bestScore {
+						bestScore = score
+						candidates = []string{targetName}
+					}
+				}
+				// Check if the source node is one of the candidates
+				ignored := false
+				for _, targetName := range candidates {
+					if targetName == nodeName {
+						ignored = true
 					}
 				}
 				// Do not migrate if the target node is the same as source node
-				if nodeName == bestTargetNodeName {
+				if ignored {
 					// Subtract resource on target node
 					source.CpuFree -= request.CpuReq
 					source.MemFree -= request.MemReq
@@ -1091,9 +1104,12 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 					worker.Migration = false
 					continue
 				}
+				// Randomly get target node from candidates
+				n, _ := crand.Int(crand.Reader, big.NewInt(int64(len(candidates))))
+				selectedNodeName := candidates[int(n.Int64())]
 
 				// Subtract resource on target node
-				target := nodeRes[nodeName]
+				target := nodeRes[selectedNodeName]
 				target.CpuFree -= request.CpuReq
 				target.MemFree -= request.MemReq
 				target.CpuMaxRequest += request.CpuMaxRequest
@@ -1110,8 +1126,8 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 					}
 				}
 
-				if _, ok := (*migrationTarget[runJob])[bestTargetNodeName]; !ok {
-					(*migrationTarget[runJob])[bestTargetNodeName] = &NodeResPlacePlan{}
+				if _, ok := (*migrationTarget[runJob])[selectedNodeName]; !ok {
+					(*migrationTarget[runJob])[selectedNodeName] = &NodeResPlacePlan{}
 				}
 
 				t := &WorkerResources{
@@ -1124,8 +1140,8 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 				delete((*(*migrationTarget[runJob])[nodeName]), workerID)
 
 				newWorkerID := NewWorkerID(5)
-				(*(*migrationTarget[runJob])[bestTargetNodeName])[newWorkerID] = t
-				log.Infof("Worker %s from Node %s will be migrated as Worker %s at Node %s", workerID, nodeName, newWorkerID, bestTargetNodeName)
+				(*(*migrationTarget[runJob])[selectedNodeName])[newWorkerID] = t
+				log.Infof("Worker %s from Node %s will be migrated as Worker %s at Node %s", workerID, nodeName, newWorkerID, selectedNodeName)
 			}
 			if stop {
 				break
