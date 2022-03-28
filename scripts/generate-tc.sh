@@ -50,6 +50,8 @@ spec:
             env:
             - name: "global_steps"
               value: "500"
+            - name: "batch_interval"
+              value: "20"
             - name: NODE_IP
               valueFrom:
                 fieldRef:
