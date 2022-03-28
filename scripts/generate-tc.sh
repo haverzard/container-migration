@@ -33,7 +33,7 @@ spec:
             resources:
               requests:
                 cpu: "500m"
-                memory: "2Gi"
+                memory: "1Gi"
               limits:
                 cpu: "1"
                 memory: "2Gi"
@@ -50,6 +50,8 @@ spec:
             env:
             - name: "global_steps"
               value: "500"
+            - name: "batch_interval"
+              value: "20"
             - name: NODE_IP
               valueFrom:
                 fieldRef:

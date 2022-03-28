@@ -17,12 +17,12 @@ clean:
 	rm -r bin 2>/dev/null; exit 0
 
 install:
-	kubectl create -f https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/v0.9/crd.yaml
-	kubectl create -f https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/v0.9/dragon.yaml
+	kubectl create -f ./deployments/kubernetes/crd.yaml
+	kubectl create -f ./deployments/kubernetes/dragon-orig.yaml
 
 uninstall:
-	kubectl delete -f https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/v0.9/dragon.yaml
-	kubectl delete -f https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/v0.9/crd.yaml
+	kubectl delete -f ./deployments/kubernetes/dragon-orig.yaml
+	kubectl delete -f ./deployments/kubernetes/crd.yaml
 
 install-custom:
 	kubectl create -f ./deployments/kubernetes/monitor.yaml
@@ -35,8 +35,8 @@ uninstall-custom:
 	kubectl delete -f ./deployments/kubernetes/monitor.yaml
 
 release-dragon:
-	docker build -t haverzard/dragon:0.0.0 -f ./deployments/docker/DRAGON/Dockerfile .
-	docker push haverzard/dragon:0.0.0
+	docker build -t haverzard/dragon:$(VERSION) -f ./deployments/docker/DRAGON/Dockerfile .
+	docker push haverzard/dragon:$(VERSION)
 
 release-api:
 	docker build -t haverzard/monitor-api:$(VERSION) -f experiments/monitor-api/Dockerfile experiments/monitor-api/

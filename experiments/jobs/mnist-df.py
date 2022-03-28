@@ -176,5 +176,7 @@ if __name__ == "__main__":
         (f"http://{os.environ['NODE_IP']}:8081") if "NODE_IP" in os.environ else None
     )
     FLAGS.pod_name = os.getenv("POD_NAME", None)
-    FLAGS.batch_interval = 5
+    FLAGS.batch_interval = (
+        int(os.environ["batch_interval"]) if "batch_interval" in os.environ else 5
+    )
     tf.app.run(main=main, argv=[sys.argv[0]])
