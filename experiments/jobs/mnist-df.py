@@ -148,7 +148,11 @@ def main(_):
                     [train_step, global_step], feed_dict={x: batch_xs, y_exp: batch_ys}
                 )
                 batches += 1
-                if not mon_sess.should_stop() and batches % FLAGS.batch_interval == 0:
+                if (
+                    not mon_sess.should_stop()
+                    and batches % FLAGS.batch_interval == 0
+                    and (FLAGS.global_steps - step) < FLAGS.max_workers
+                ):
                     batch_xs, batch_ys = mnist.test.next_batch(16)
                     accuracy = mon_sess.run(
                         acc_op, feed_dict={x: batch_xs, y_exp: batch_ys}
@@ -176,6 +180,9 @@ if __name__ == "__main__":
         (f"http://{os.environ['NODE_IP']}:8081") if "NODE_IP" in os.environ else None
     )
     FLAGS.pod_name = os.getenv("POD_NAME", None)
+    FLAGS.max_workers = (
+        int(os.getenv("max_workers")) if "max_workers" in os.environ else 10
+    ) * 2
     FLAGS.batch_interval = (
         int(os.environ["batch_interval"]) if "batch_interval" in os.environ else 5
     )

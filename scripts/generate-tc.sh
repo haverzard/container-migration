@@ -52,6 +52,8 @@ spec:
               value: "500"
             - name: "batch_interval"
               value: "20"
+            - name: "max_workers"
+              value: "$upper_bound"
             - name: NODE_IP
               valueFrom:
                 fieldRef:
