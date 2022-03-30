@@ -26,7 +26,7 @@ spec:
           containers:
           - name: tensorflow
             image: haverzard/tf-image:$TF_IMAGE_VERSION
-            command: ["/bin/bash", "-c", "curl -s $url/mnist-df.py | python3 -"]
+            command: ["/bin/bash", "-c", "curl -s 1/mnist-df.py > tf.py && (python tf.py chief & python tf.py)"]
             ports:
             - containerPort: 2222
               name: tfjob-port
