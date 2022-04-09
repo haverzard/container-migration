@@ -38,8 +38,8 @@ release-dragon:
 	docker build -t haverzard/dragon:$(VERSION) -f ./deployments/docker/DRAGON/Dockerfile .
 	docker push haverzard/dragon:$(VERSION)
 
-release-api:
-	docker build -t haverzard/monitor-api:$(VERSION) -f experiments/monitor-api/Dockerfile experiments/monitor-api/
+release-monitor:
+	docker build -t haverzard/monitor-api:$(VERSION) -f ./deployments/docker/container-monitor/Dockerfile ./internal/container-monitor/
 	docker push haverzard/monitor-api:$(VERSION)
 
 release-tf-image:
