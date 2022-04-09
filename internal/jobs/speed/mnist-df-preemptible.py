@@ -11,6 +11,13 @@ class Empty:
 
 
 def batch_norm(x, axes=[0, 1, 2]):
+    """
+    Batch Normalization layer with `tf.nn`
+
+    Args:
+        x       : input neurons
+        axes    : axes to compute mean and std. Use [0,1,2] for 2D norm and [0] for 1D norm
+    """
     mean_x, std_x = tf.nn.moments(x, axes=axes, keep_dims=True)
     return tf.nn.batch_normalization(x, mean_x, std_x, 0, 1, 1e-3)
 
@@ -18,6 +25,17 @@ def batch_norm(x, axes=[0, 1, 2]):
 def conv2d(
     x, filters=None, kernel_size=None, n_inputs=None, strides=(1, 1), name="default"
 ):
+    """
+    Convolution 2D layer with `tf.nn`
+
+    Args:
+        x           : input neurons
+        filters     : number of filters
+        kernel_size : 2D kernel size
+        n_inputs    : number of inputs
+        strides     : 2D stride size
+        name        : layer name
+    """
     W = tf.get_variable(
         "W" + name,
         shape=(*kernel_size, n_inputs, filters),
@@ -155,14 +173,20 @@ def main(_):
 
 if __name__ == "__main__":
     TF_CONFIG = ast.literal_eval(os.environ["TF_CONFIG"])
+    # Handle Chief/Coordinator process
     if len(sys.argv) == 2 and sys.argv[1] == "chief":
         FLAGS.job_name = "worker"
     else:
         FLAGS.job_name = TF_CONFIG["task"]["type"]
+    # Task identity
     FLAGS.task_index = TF_CONFIG["task"]["index"]
+    # Cluster config
     FLAGS.ps_hosts = ",".join(TF_CONFIG["cluster"]["ps"])
     FLAGS.worker_hosts = ",".join(TF_CONFIG["cluster"]["worker"])
-    FLAGS.global_steps = 100
+    FLAGS.global_steps = (
+        int(os.environ["global_steps"]) if "global_steps" in os.environ else 100000
+    )
+    # Migration config
     FLAGS.monitoring_api = (
         (f"http://{os.environ['NODE_IP']}:8081") if "NODE_IP" in os.environ else None
     )
