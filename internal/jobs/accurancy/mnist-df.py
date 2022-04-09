@@ -3,7 +3,6 @@ import tensorflow as tf
 import sys
 import os
 import ast
-import requests
 
 
 class Empty:
@@ -11,6 +10,13 @@ class Empty:
 
 
 def batch_norm(x, axes=[0, 1, 2]):
+    """
+    Batch Normalization layer with `tf.nn`
+
+    Args:
+        x       : input neurons
+        axes    : axes to compute mean and std. Use [0,1,2] for 2D norm and [0] for 1D norm
+    """
     mean_x, std_x = tf.nn.moments(x, axes=axes, keep_dims=True)
     return tf.nn.batch_normalization(x, mean_x, std_x, 0, 1, 1e-3)
 
@@ -18,6 +24,17 @@ def batch_norm(x, axes=[0, 1, 2]):
 def conv2d(
     x, filters=None, kernel_size=None, n_inputs=None, strides=(1, 1), name="default"
 ):
+    """
+    Convolution 2D layer with `tf.nn`
+
+    Args:
+        x           : input neurons
+        filters     : number of filters
+        kernel_size : 2D kernel size
+        n_inputs    : number of inputs
+        strides     : 2D stride size
+        name        : layer name
+    """
     W = tf.get_variable(
         "W" + name,
         shape=(*kernel_size, n_inputs, filters),
@@ -111,6 +128,7 @@ def main(_):
             )
 
         # The StopAtStepHook handles stopping after running given steps.
+        # The FinalOpsHook handles running the final evaluation after the training is stopped
         is_chief = FLAGS.task_index == 0
         final_ops = tf.train.FinalOpsHook(
             acc_op, {x: mnist.test._images, y_exp: mnist.test._labels}
@@ -137,46 +155,39 @@ def main(_):
                 _, step = mon_sess.run(
                     [train_step, global_step], feed_dict={x: batch_xs, y_exp: batch_ys}
                 )
+
+                # Evaluation Step
                 batches += 1
                 if (
                     not mon_sess.should_stop()
                     and batches % FLAGS.batch_interval == 0
-                    and (FLAGS.global_steps - step) > FLAGS.max_workers
                 ):
                     batch_xs, batch_ys = mnist.test.next_batch(16)
                     accuracy = mon_sess.run(
                         acc_op, feed_dict={x: batch_xs, y_exp: batch_ys}
                     )
-                    print(f"ACC {batches} {accuracy}")
-                    # if not is_chief:
-                    #     requests.post(
-                    #         FLAGS.monitoring_api + "/monitor",
-                    #         headers={"Content-Type": "application/json"},
-                    #         json={"pod": FLAGS.pod_name, "value": float(accuracy)},
-                    #     )
+                    print(f"ACC {step} {accuracy}")
         print("DONE")
         if is_chief:
             print("Final Accuracy: " + str(final_ops._final_ops_values))
 
+
 if __name__ == "__main__":
     TF_CONFIG = ast.literal_eval(os.environ["TF_CONFIG"])
+    # Handle Chief/Coordinator process
     if len(sys.argv) == 2 and sys.argv[1] == "chief":
         FLAGS.job_name = "worker"
     else:
         FLAGS.job_name = TF_CONFIG["task"]["type"]
+    # Task identity
     FLAGS.task_index = TF_CONFIG["task"]["index"]
+    # Cluster config
     FLAGS.ps_hosts = ",".join(TF_CONFIG["cluster"]["ps"])
     FLAGS.worker_hosts = ",".join(TF_CONFIG["cluster"]["worker"])
     FLAGS.global_steps = (
         int(os.environ["global_steps"]) if "global_steps" in os.environ else 100000
     )
-    FLAGS.monitoring_api = (
-        (f"http://{os.environ['NODE_IP']}:8081") if "NODE_IP" in os.environ else None
-    )
-    FLAGS.pod_name = os.getenv("POD_NAME", None)
-    FLAGS.max_workers = (
-        int(os.getenv("max_workers")) if "max_workers" in os.environ else 10
-    ) * 5
+    # Evaluation config
     FLAGS.batch_interval = (
         int(os.environ["batch_interval"]) if "batch_interval" in os.environ else 20
     )
