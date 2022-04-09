@@ -132,24 +132,22 @@ def main(_):
                 _, step = mon_sess.run(
                     [train_step, global_step], feed_dict={x: batch_xs, y_exp: batch_ys}
                 )
-                # batches += 1
-                # if (
-                #     not is_chief
-                #     and not mon_sess.should_stop()
-                #     and batches % FLAGS.batch_interval == 0
-                #     and (FLAGS.global_steps - step) > FLAGS.max_workers
-                # ):
-                #     batch_xs, batch_ys = mnist.test.next_batch(16)
-                #     accuracy = mon_sess.run(
-                #         acc_op, feed_dict={x: batch_xs, y_exp: batch_ys}
-                #     )
-                #     requests.post(
-                #         FLAGS.monitoring_api + "/monitor",
-                #         headers={"Content-Type": "application/json"},
-                #         json={"pod": FLAGS.pod_name, "value": float(accuracy)},
-                #     )
-                #     # sys.stderr.write('global_step: '+str(step))
-                #     # sys.stderr.write('\n')
+                batches += 1
+                if (
+                    not is_chief
+                    and not mon_sess.should_stop()
+                    and batches % FLAGS.batch_interval == 0
+                    and (FLAGS.global_steps - step) > FLAGS.max_workers
+                ):
+                    batch_xs, batch_ys = mnist.test.next_batch(16)
+                    accuracy = mon_sess.run(
+                        acc_op, feed_dict={x: batch_xs, y_exp: batch_ys}
+                    )
+                    requests.post(
+                        FLAGS.monitoring_api + "/monitor",
+                        headers={"Content-Type": "application/json"},
+                        json={"pod": FLAGS.pod_name, "value": float(accuracy)},
+                    )
 
 
 if __name__ == "__main__":
