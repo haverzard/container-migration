@@ -111,13 +111,18 @@ def main(_):
             )
 
         # The StopAtStepHook handles stopping after running given steps.
+        is_chief = FLAGS.task_index == 0
+        final_ops = tf.train.FinalOpsHook(
+            acc_op, {x: mnist.test._images, y_exp: mnist.test._labels}
+        )
         hooks = [tf.train.StopAtStepHook(last_step=FLAGS.global_steps)]
+        if is_chief:
+            hooks.append(final_ops)
 
         # The MonitoredTrainingSession takes care of session initialization,
         # restoring from a checkpoint, saving to a checkpoint, and closing when done
         # or an error occurs.
         batches = 0
-        is_chief = FLAGS.task_index == 0
         with tf.train.MonitoredTrainingSession(
             master=server.target,
             is_chief=is_chief,
@@ -132,25 +137,26 @@ def main(_):
                 _, step = mon_sess.run(
                     [train_step, global_step], feed_dict={x: batch_xs, y_exp: batch_ys}
                 )
-                # batches += 1
-                # if (
-                #     not is_chief
-                #     and not mon_sess.should_stop()
-                #     and batches % FLAGS.batch_interval == 0
-                #     and (FLAGS.global_steps - step) > FLAGS.max_workers
-                # ):
-                #     batch_xs, batch_ys = mnist.test.next_batch(16)
-                #     accuracy = mon_sess.run(
-                #         acc_op, feed_dict={x: batch_xs, y_exp: batch_ys}
-                #     )
-                #     requests.post(
-                #         FLAGS.monitoring_api + "/monitor",
-                #         headers={"Content-Type": "application/json"},
-                #         json={"pod": FLAGS.pod_name, "value": float(accuracy)},
-                #     )
-                #     # sys.stderr.write('global_step: '+str(step))
-                #     # sys.stderr.write('\n')
-
+                batches += 1
+                if (
+                    not mon_sess.should_stop()
+                    and batches % FLAGS.batch_interval == 0
+                    and (FLAGS.global_steps - step) > FLAGS.max_workers
+                ):
+                    batch_xs, batch_ys = mnist.test.next_batch(16)
+                    accuracy = mon_sess.run(
+                        acc_op, feed_dict={x: batch_xs, y_exp: batch_ys}
+                    )
+                    print(f"ACC {batches} {accuracy}")
+                    # if not is_chief:
+                    #     requests.post(
+                    #         FLAGS.monitoring_api + "/monitor",
+                    #         headers={"Content-Type": "application/json"},
+                    #         json={"pod": FLAGS.pod_name, "value": float(accuracy)},
+                    #     )
+        print("DONE")
+        if is_chief:
+            print("Final Accuracy: " + str(final_ops._final_ops_values))
 
 if __name__ == "__main__":
     TF_CONFIG = ast.literal_eval(os.environ["TF_CONFIG"])
@@ -161,7 +167,9 @@ if __name__ == "__main__":
     FLAGS.task_index = TF_CONFIG["task"]["index"]
     FLAGS.ps_hosts = ",".join(TF_CONFIG["cluster"]["ps"])
     FLAGS.worker_hosts = ",".join(TF_CONFIG["cluster"]["worker"])
-    FLAGS.global_steps = 100
+    FLAGS.global_steps = (
+        int(os.environ["global_steps"]) if "global_steps" in os.environ else 100000
+    )
     FLAGS.monitoring_api = (
         (f"http://{os.environ['NODE_IP']}:8081") if "NODE_IP" in os.environ else None
     )
