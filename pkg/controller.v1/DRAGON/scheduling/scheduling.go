@@ -1022,26 +1022,7 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 					continue
 				}
 
-				// scale down one worker
-				// res := nodeRes[nodeName]
-				// res.CpuFree += runJobReq.CpuReq
-				// res.MemFree += runJobReq.MemReq
-
-				// if option.KubeShareSupport { // kubeshare/gpu
-				// 	if gpuid, ok := (*worker).Workers[cluster.ResourceKubeShareGPU]; ok {
-				// 		res.GpuFree[gpuid].GPUFreeReq += runJobReq.GpuReq
-				// 		res.GpuFree[gpuid].GPUFreeMem += runJobReq.GpuMemReq
-				// 	}
-				// } else { // nvidia.com/gpu
-				// 	if _, ok := (*worker).Workers[cluster.ResourceNvidiaGPU]; ok {
-				// 		res.GpuFreeCount += int(runJobReq.GpuReq / 1000)
-				// 	}
-				// }
-				// log.Infof("************************************ DEBUG ************************************")
-				// nodeRes.PrintMe()
-				// log.Infof("************************************ DEBUG ************************************")
-
-				// make a temporary copy. apply to origin only if can scale down
+				// make a temporary copy
 				if _, ok := migrationTarget[runJob]; !ok {
 					migrationTarget[runJob] = runJob.ReplicasPlacementPlan[tfv1.TFReplicaTypeWorker].DeepCopy()
 				}
@@ -1085,7 +1066,7 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 				}
 				// Do not migrate if the target node is the same as source node
 				if ignored {
-					// Subtract resource on target node
+					// Subtract resource on source node to rollback changes
 					source.CpuFree -= request.CpuReq
 					source.MemFree -= request.MemReq
 					source.CpuMaxRequest += request.CpuMaxRequest
@@ -1130,6 +1111,7 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 					(*migrationTarget[runJob])[selectedNodeName] = &NodeResPlacePlan{}
 				}
 
+				// allocate new worker pod
 				t := &WorkerResources{
 					Workers:         map[string]string{},
 					Critical:        false,
@@ -1149,16 +1131,6 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 		}
 	}
 
-	// final test if request can be scheduled
-	// log.Infof("Scale Down schedule test start...")
-	// ok, tmp := ScheduleJob(&([]*cluster.PodRequests{highPriorityJob}), nodeRes)
-
-	// if ok[0] == len(*highPriorityJob) {
-	// 	log.Infof("Scale Down successful!")
-	// 	highPriorityJobPlacementPlan = tmp
-	// 	can = true
-	// 	return
-	// }
 	log.Infof("Migrate Task successful")
 	can = true
 
