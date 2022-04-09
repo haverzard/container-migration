@@ -158,10 +158,7 @@ def main(_):
 
                 # Evaluation Step
                 batches += 1
-                if (
-                    not mon_sess.should_stop()
-                    and batches % FLAGS.batch_interval == 0
-                ):
+                if not mon_sess.should_stop() and batches % FLAGS.batch_interval == 0:
                     batch_xs, batch_ys = mnist.test.next_batch(16)
                     accuracy = mon_sess.run(
                         acc_op, feed_dict={x: batch_xs, y_exp: batch_ys}
