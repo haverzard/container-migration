@@ -132,6 +132,8 @@ def main(_):
                 _, step = mon_sess.run(
                     [train_step, global_step], feed_dict={x: batch_xs, y_exp: batch_ys}
                 )
+
+                # Evaluation Step
                 batches += 1
                 if (
                     not is_chief
@@ -143,6 +145,7 @@ def main(_):
                     accuracy = mon_sess.run(
                         acc_op, feed_dict={x: batch_xs, y_exp: batch_ys}
                     )
+                    # Send accuracy to Container Monitor
                     requests.post(
                         FLAGS.monitoring_api + "/monitor",
                         headers={"Content-Type": "application/json"},
