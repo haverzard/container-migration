@@ -1,9 +1,9 @@
-
-name: Publish Docker image
+name: Publish DRAGON Docker image
 
 on:
   push:
-    branches: [ main ]
+    tags:
+      - 'dragon-v[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
   push_to_registry:
@@ -31,5 +31,5 @@ jobs:
           context: .
           file: ./deployments/docker/DRAGON/Dockerfile
           push: true
-          tags: haverzard/dragon:0.0.0
+          tags: haverzard/dragon:${{ github.ref_name:7 }}
           labels: ${{ steps.meta.outputs.labels }}
