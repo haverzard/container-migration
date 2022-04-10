@@ -12,6 +12,9 @@ import (
 	"github.com/haverzard/ta/pkg/utils"
 )
 
+// Run background task
+// for getting resource usage information on every Node
+// and doing gargabe collection on Pod lists
 func RunBackgroundTask(nodeCtl *controller.NodeController, podCtl *controller.PodController) {
 	log.Printf("%v - just ticked", time.Now())
 	jt := ticker.NewJobTicker(0, 1, 0)

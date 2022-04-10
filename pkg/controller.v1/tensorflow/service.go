@@ -79,6 +79,7 @@ func (tc *TFController) reconcileServices(
 	for index, val := range deleteLater {
 		if val {
 			/* haverzard */
+			// Do not add random id on services since we don't migrate services
 			n := jobcontroller.GenGeneralName(tfjob.Name, rt, strconv.Itoa(index), "")
 			/* haverzard */
 			tflogger.LoggerForReplica(tfjob, rt).Infof("Delete service %s", n)
@@ -119,12 +120,14 @@ func (tc *TFController) createNewService(tfjob *tfv1.TFJob, rtype tfv1.TFReplica
 	}
 
 	/* haverzard */
+	// Init service ports
 	ports := []v1.ServicePort{
 		{
 			Name: tfv1.DefaultPortName,
 			Port: port,
 		},
 	}
+	// Add chief/coordinator process port if replica type is parameter server
 	if rtype == tfv1.TFReplicaTypePS {
 		ports = append(ports, v1.ServicePort{
 			Name: "chief-port",

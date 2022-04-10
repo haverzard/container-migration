@@ -157,24 +157,25 @@ func (tc *TFController) reconcilePods(
 			/* haverzard */
 			index := 0
 			pods := podSlices[worker.TargetID]
+			// Reuse old pod task index
 			if worker.Migration && len(pods) >= 1 {
 				pod := pods[0]
 				index, err = strconv.Atoi(pod.Labels[tfReplicaIndexLabel])
 				if err != nil {
 					logger.Errorf("Pod Label replica index is not a number! %s", pod.Labels[tfReplicaIndexLabel])
 				}
-				logger.Infof("Migration Worker %v", worker)
+				logger.Infof("Migrated Worker %v", worker)
 			} else {
 				// find next available index
 				for ; usedIndex_i < usedIndexLen && workerIndex == usedIndex[usedIndex_i]; usedIndex_i, workerIndex = usedIndex_i+1, workerIndex+1 {
 				}
 				index = workerIndex
 			}
-			// TODO: double check index doesn't exist in usedIndex (possible cause ScaleUp)
+			// Reset `Migration` flag for new replacement worker
 			worker.Migration = false
-			/* haverzard */
-			logger.Infof("Worker Index: %d\n", index)
+			logger.Infof("Selected Worker Index: %d\n", index)
 			usedIndexCopy = append(usedIndexCopy, index)
+			/* haverzard */
 
 			masterRole = false
 			logger.Infof("Need to create new pod: %s", rt)

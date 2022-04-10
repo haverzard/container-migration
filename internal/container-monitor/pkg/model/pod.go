@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"log"
 	"math"
 	"sync"
@@ -66,6 +65,7 @@ func (pod *Pod) Speculate() {
 	alpha := float64(0.0)
 	beta := float64(0.0)
 
+	// Use regression to predict alpha & beta value
 	pod.Regressor.Train(regression.DataPoint(math.Log(score)/math.Log(math.E), []float64{t2 - t0}))
 	if err := pod.Regressor.Run(); err == nil {
 		alpha, err = pod.Regressor.Predict([]float64{t2 - t0})
@@ -74,12 +74,9 @@ func (pod *Pod) Speculate() {
 			return
 		}
 		alpha = math.Exp(alpha)
-		fmt.Println(alpha)
 		beta = 1 - pod.Regressor.R2
 	}
 
-	// log.Printf("Time: %v, Score: %v, dScore: %v", dt, score, dscore)
-	// log.Printf("Test %v", utils.PROGRESSING_THREESHOLD)
 	// SpeCon + Custom categorization
 	if score > alpha {
 		pod.Category = Progressing
