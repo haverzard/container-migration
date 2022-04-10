@@ -1,3 +1,4 @@
+/* haverzard */
 package backend
 
 import (
@@ -13,7 +14,7 @@ type MigrationHandler interface {
 	AddMigration(obj interface{})
 }
 
-func (hb *HaverzardBackend) HandleMigration(w http.ResponseWriter, req *http.Request) {
+func (mb *MigrationBackend) HandleMigration(w http.ResponseWriter, req *http.Request) {
 	d := json.NewDecoder(req.Body)
 	mr := &migration.MigrationObject{}
 	err := d.Decode(mr)
@@ -21,11 +22,11 @@ func (hb *HaverzardBackend) HandleMigration(w http.ResponseWriter, req *http.Req
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	hb.mh.AddMigration(mr)
+	mb.mh.AddMigration(mr)
 	fmt.Fprintf(w, "hello\n")
 }
 
-func (hb *HaverzardBackend) GetClusterInfo(w http.ResponseWriter, req *http.Request) {
+func (mb *MigrationBackend) GetClusterInfo(w http.ResponseWriter, req *http.Request) {
 	nodeRes, err := cluster.SyncClusterResource()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -39,3 +40,5 @@ func (hb *HaverzardBackend) GetClusterInfo(w http.ResponseWriter, req *http.Requ
 
 	fmt.Fprintf(w, string(data))
 }
+
+/* haverzard */

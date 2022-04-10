@@ -126,9 +126,11 @@ func Run(opt *options.ServerOption) error {
 	// Create tf controller.
 	tc := controller.NewTFController(unstructuredInformer, kubeClientSet, kubeBatchClientSet, tfJobClientSet, kubeInformerFactory, tfJobInformerFactory, kubeshareClientSet, opt, kubeshareInformerFactory)
 
-	// Create custom backend
-	haverzardBackend := backend.NewHaverzardBackend(tc)
-	go haverzardBackend.Start(stopCh)
+	// Create & start migration microservice.
+	/* haverzard */
+	migrationBackend := backend.NewMigrationBackend(tc)
+	go migrationBackend.Start(stopCh)
+	/* haverzard */
 
 	// Start informer goroutines.
 	go kubeInformerFactory.Start(stopCh)
