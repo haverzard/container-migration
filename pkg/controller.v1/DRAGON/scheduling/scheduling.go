@@ -247,6 +247,7 @@ func (this *NodeResPlacePlan) PrintMe(prefix string) {
 /* ------------------- struct NodeResPlacePlan end ------------------- */
 
 /* ------------------- struct WorkerResources start ------------------- */
+/* haverzard */
 
 type WorkerResources struct {
 	// ResourceName => ResourceId
@@ -256,6 +257,8 @@ type WorkerResources struct {
 	TotalMigrations uint
 	TargetID        string
 }
+
+/* haverzard */
 
 func (this *WorkerResources) DeepCopy() *WorkerResources {
 	w := WorkerResources{
@@ -329,10 +332,12 @@ func SchedulingAlgorithm(
 	migration bool,
 ) {
 
+	/* haverzard */
 	/*
 	 * Migration Phase
+	 * Migrate all indicated tasks to better Nodes
+	 * Ignore migration if target Node is equal to source Node
 	 */
-
 	if migration {
 		ok, placementPlan := MigrateTask(*runningQueue, nodeRes)
 		if ok {
@@ -344,6 +349,7 @@ func SchedulingAlgorithm(
 		// lastActionTime = metav1.Now()
 		return
 	}
+	/* haverzard */
 
 	// check if high priority job exists
 	var pendingResource *cluster.PodRequest = nil
@@ -990,12 +996,13 @@ func ScaleUp(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can boo
 }
 
 func getNodeScoreByResource(node *cluster.NodeResource) float64 {
-	return float64(node.CpuMaxRequest)/float64(node.CpuTotal)*0.7 + float64(node.MemMaxRequest)/float64(node.MemTotal)*0.3
+	return float64(node.CpuMaxRequest)/float64(node.CpuTotal)*0.5 + float64(node.MemMaxRequest)/float64(node.MemTotal)*0.5
 }
 
 /* haverzard */
-// ScaleDown scale down other jobs let high priority job runs.
-// ScaleDown is only called if high priority job exists.
+
+// MigrateTask migrates tasks based on Container Monitor's request.
+// MigrateTask is only called if migration job exists.
 func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can bool, migrationTarget JobsPlacementPlan) {
 	log.Infof("================= MigrateTask Start =================")
 	defer log.Infof("================== MigrateTask End ==================")
@@ -1136,6 +1143,8 @@ func MigrateTask(runningQueue JobQueue, constNodeRes cluster.NodeResources) (can
 
 	return
 }
+
+/* haverzard */
 
 // SortNodeFromJob sort node priority from job's placement paln,
 // from the least important to the most
