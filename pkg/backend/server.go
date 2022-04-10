@@ -1,3 +1,4 @@
+/* haverzard */
 package backend
 
 import (
@@ -8,17 +9,26 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type HaverzardBackend struct {
+type MigrationBackend struct {
 	mh MigrationHandler
 }
 
-func NewHaverzardBackend(mh MigrationHandler) *HaverzardBackend {
-	return &HaverzardBackend{mh}
+/*
+	Initialize migration microservice
+*/
+func NewMigrationBackend(mh MigrationHandler) *MigrationBackend {
+	return &MigrationBackend{mh}
 }
 
-func (hb *HaverzardBackend) Start(stopCh <-chan struct{}) {
-	http.HandleFunc("/migrate", hb.HandleMigration)
-	http.HandleFunc("/cluster-info", hb.GetClusterInfo)
+/*
+	Start migration microservice
+*/
+func (mb *MigrationBackend) Start(stopCh <-chan struct{}) {
+	// Register endpoints
+	http.HandleFunc("/migrate", mb.HandleMigration)
+	http.HandleFunc("/cluster-info", mb.GetClusterInfo)
+
+	// Start server
 	server := &http.Server{Addr: ":8769"}
 	go func() {
 		server.ListenAndServe()
@@ -28,9 +38,12 @@ func (hb *HaverzardBackend) Start(stopCh <-chan struct{}) {
 	<-stopCh
 	log.Info("Shutting down backend server")
 
+	// Shutdown server upon termination
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
 		log.Error("Error on shutting down backend server")
 	}
 }
+
+/* haverzard */

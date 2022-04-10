@@ -1,3 +1,4 @@
+/* haverzard */
 package tensorflow
 
 import (
@@ -5,7 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// When a pod is created, enqueue the job that manages it and update its expectations.
+// When a migration request is received, enqueue it as migration job.
 func (tc *TFController) AddMigration(obj interface{}) {
 	migrationObj, ok := obj.(*migration.MigrationObject)
 	if !ok {
@@ -17,3 +18,5 @@ func (tc *TFController) AddMigration(obj interface{}) {
 
 	return
 }
+
+/* haverzard */

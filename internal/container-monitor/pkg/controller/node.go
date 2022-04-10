@@ -11,8 +11,9 @@ import (
 	"github.com/haverzard/ta/pkg/utils"
 )
 
+// Get Node score based on CPU & memory usage
 func getNodeScoreByResource(node *model.NodeResource) float64 {
-	return float64(node.CpuMaxRequest)/float64(node.CpuTotal)*0.7 + float64(node.MemMaxRequest)/float64(node.MemTotal)*0.3
+	return float64(node.CpuMaxRequest)/float64(node.CpuTotal)*0.5 + float64(node.MemMaxRequest)/float64(node.MemTotal)*0.5
 }
 
 type NodeController struct {
@@ -79,17 +80,4 @@ func (nc *NodeController) IsOverload() bool {
 	}
 	std := math.Sqrt(sum / float64(n))
 	return (nodeScore - mean) > (utils.OVERLOAD_THREESHOLD * std)
-
-	// for nodeName, nodeRes := range *nodeResources {
-	// 	if nodeName != utils.NODE_NAME {
-	// 		score := getNodeScoreByResource(nodeRes)
-	// 		dscore := nodeScore - score
-	// 		if nodeScore > 1 && score < 1 {
-	// 			return true
-	// 		}
-	// 		if dscore > utils.OVERLOAD_THREESHOLD {
-	// 			return true
-	// 		}
-	// 	}
-	// }
 }

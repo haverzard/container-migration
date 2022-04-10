@@ -39,8 +39,8 @@ release-dragon:
 	docker push haverzard/dragon:$(VERSION)
 
 release-monitor:
-	docker build -t haverzard/monitor-api:$(VERSION) -f ./deployments/docker/container-monitor/Dockerfile ./internal/container-monitor/
-	docker push haverzard/monitor-api:$(VERSION)
+	docker build -t haverzard/container-monitor:$(VERSION) -f ./deployments/docker/container-monitor/Dockerfile ./internal/container-monitor/
+	docker push haverzard/container-monitor:$(VERSION)
 
 release-tf-image:
 	docker build -t haverzard/tf-image:$(TF_IMAGE_VERSION) -f ./deployments/docker/tf-image/Dockerfile .
@@ -54,6 +54,7 @@ init-local-cluster:
 delete-local-cluster:
 	minikube stop -p ta-playground
 
+URL ?= 'https://raw.githubusercontent.com/haverzard/container-migration/main/internal/jobs/speed/mnist-df.py'
 MAX_REPLICAS ?= 1
 MIN_REPLICAS ?= 1
 INIT_REPLICAS ?= 1

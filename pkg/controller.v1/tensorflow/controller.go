@@ -274,16 +274,18 @@ func (tc *TFController) processNextWorkItem() bool {
 	}
 	defer tc.WorkQueue.Done(obj)
 
-	log.Infof("Object: %v", obj)
 	var key string
 	var ok bool
 	if key, ok = obj.(string); !ok {
+		/* haverzard */
+		// Check if it's migration job
 		if migrationObj, ok := obj.(*migration.MigrationObject); ok {
 			podName := migrationObj.PodName
 			n := len(podName)
 			workerId := podName[n-5 : n]
 			log.Infof("Worker %s %s", workerId, podName)
-			// var selectedJob *scheduling.TrainingJob
+
+			// Indicate all soon-to-be-migrated workers with `Migration` flag
 			for _, runJob := range tc.RunningQueue {
 				plan := (*runJob.ReplicasPlacementPlan[tfv1.TFReplicaTypeWorker])
 				if workers, ok := plan[migrationObj.Node]; ok {
@@ -293,6 +295,8 @@ func (tc *TFController) processNextWorkItem() bool {
 					}
 				}
 			}
+
+			// Process the migration job with the migration scheduling policy
 			err := tc.reconcileTFJobs(nil, true)
 			if err != nil {
 				tc.WorkQueue.AddRateLimited(migrationObj)
@@ -301,6 +305,8 @@ func (tc *TFController) processNextWorkItem() bool {
 
 			return true
 		}
+		/* haverzard */
+
 		// As the item in the workqueue is actually invalid, we call
 		// Forget here else we'd go into a loop of attempting to
 		// process a work item that is invalid.

@@ -81,9 +81,12 @@ func genTFConfigJSONStr(tfjob *tfv1.TFJob, rtype, index string) (string, error) 
 	if err != nil {
 		return "", err
 	}
+	/* haverzard */
+	// Increment task index by one for worker to support the coordinator process
 	if rtype == strings.ToLower(string(tfv1.TFReplicaTypeWorker)) {
 		i++
 	}
+	/* haverzard */
 
 	tfConfig := TFConfig{
 		Cluster: cluster,
@@ -131,6 +134,7 @@ func genClusterSpec(tfjob *tfv1.TFJob) (ClusterSpec, error) {
 				// And the last part "svc.cluster.local" is called cluster domain
 				// which maybe different between kubernetes clusters.
 				/* haverzard */
+				// Do not add random id on hostnames
 				hostName := jobcontroller.GenGeneralName(tfjob.Name, rt, fmt.Sprintf("%d", i), "")
 				/* haverzard */
 				svcName := hostName + "." + tfjob.Namespace + "." + "svc"
@@ -157,6 +161,7 @@ func genClusterSpec(tfjob *tfv1.TFJob) (ClusterSpec, error) {
 				// And the last part "svc.cluster.local" is called cluster domain
 				// which maybe different between kubernetes clusters.
 				/* haverzard */
+				// Do not add random id on hostnames
 				hostName := jobcontroller.GenGeneralName(tfjob.Name, rt, fmt.Sprintf("%d", i), "")
 				/* haverzard */
 				svcName := hostName + "." + tfjob.Namespace + "." + "svc"
