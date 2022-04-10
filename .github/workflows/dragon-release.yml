@@ -25,11 +25,18 @@ jobs:
         with:
           images: haverzard/dragon
 
+      - name: Prepare Tag
+        id: prepare-tag
+        uses: actions/github-script@v6
+        with:
+          script: return "${{ github.ref_name }}".substring(8)
+          result-encoding: string
+
       - name: Build and push Docker image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
           context: .
           file: ./deployments/docker/DRAGON/Dockerfile
           push: true
-          tags: haverzard/dragon:${{ github.ref_name:7 }}
+          tags: haverzard/dragon:${{ steps.prepare-tag.outputs.result }}
           labels: ${{ steps.meta.outputs.labels }}

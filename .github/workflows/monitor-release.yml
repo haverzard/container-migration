@@ -25,11 +25,18 @@ jobs:
         with:
           images: haverzard/container-monitor
 
+      - name: Prepare Tag
+        id: prepare-tag
+        uses: actions/github-script@v6
+        with:
+          script: return "${{ github.ref_name }}".substring(19)
+          result-encoding: string
+
       - name: Build and push Docker image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
-          context: .
+          context: ./internal/container-monitor
           file: ./deployments/docker/container-monitor/Dockerfile
           push: true
-          tags: haverzard/container-monitor:${{ github.ref_name:18 }}
+          tags: haverzard/container-monitor:${{ steps.prepare-tag.outputs.result }}
           labels: ${{ steps.meta.outputs.labels }}
