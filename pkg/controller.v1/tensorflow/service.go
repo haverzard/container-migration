@@ -118,20 +118,27 @@ func (tc *TFController) createNewService(tfjob *tfv1.TFJob, rtype tfv1.TFReplica
 		return err
 	}
 
+	/* haverzard */
+	ports := []v1.ServicePort{
+		{
+			Name: tfv1.DefaultPortName,
+			Port: port,
+		},
+	}
+	if rtype == tfv1.TFReplicaTypePS {
+		ports = append(ports, v1.ServicePort{
+			Name: "chief-port",
+			Port: port + 1,
+		})
+	}
 	service := &v1.Service{
 		Spec: v1.ServiceSpec{
 			ClusterIP: "None",
 			Selector:  labels,
-			Ports: []v1.ServicePort{
-				{
-					Name: tfv1.DefaultPortName,
-					Port: port,
-				},
-			},
+			Ports:     ports,
 		},
 	}
 
-	/* haverzard */
 	service.Name = jobcontroller.GenGeneralName(tfjob.Name, rt, index, "")
 	/* haverzard */
 	service.Labels = labels

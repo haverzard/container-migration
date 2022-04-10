@@ -81,6 +81,9 @@ func genTFConfigJSONStr(tfjob *tfv1.TFJob, rtype, index string) (string, error) 
 	if err != nil {
 		return "", err
 	}
+	if rtype == strings.ToLower(string(tfv1.TFReplicaTypeWorker)) {
+		i++
+	}
 
 	tfConfig := TFConfig{
 		Cluster: cluster,
@@ -105,6 +108,8 @@ func genTFConfigJSONStr(tfjob *tfv1.TFJob, rtype, index string) (string, error) 
 // genClusterSpec will generate ClusterSpec.
 func genClusterSpec(tfjob *tfv1.TFJob) (ClusterSpec, error) {
 	clusterSpec := make(ClusterSpec)
+	hosts := make([]string, 0)
+	rtWorker := strings.ToLower(string(tfv1.TFReplicaTypeWorker))
 
 	for rtype, spec := range tfjob.Spec.TFReplicaSpecs {
 		if rtype == tfv1.TFReplicaTypeEval {
@@ -162,11 +167,15 @@ func genClusterSpec(tfjob *tfv1.TFJob) (ClusterSpec, error) {
 
 				endpoint := fmt.Sprintf("%s:%d", svcName, port)
 				replicaNames = append(replicaNames, endpoint)
+				hosts = append(
+					hosts,
+					fmt.Sprintf("%s:%d", svcName, port+1),
+				)
 			}
-
 			clusterSpec[rt] = replicaNames
 		}
 	}
+	clusterSpec[rtWorker] = append(hosts, clusterSpec[rtWorker]...)
 
 	return clusterSpec, nil
 }
