@@ -285,7 +285,7 @@ func (tc *TFController) processNextWorkItem() bool {
 			workerId := podName[n-5 : n]
 			log.Infof("Worker %s %s", workerId, podName)
 
-			// Indicate all soon-to-migrated workers with `Migration` flag
+			// Indicate all soon-to-be-migrated workers with `Migration` flag
 			for _, runJob := range tc.RunningQueue {
 				plan := (*runJob.ReplicasPlacementPlan[tfv1.TFReplicaTypeWorker])
 				if workers, ok := plan[migrationObj.Node]; ok {
