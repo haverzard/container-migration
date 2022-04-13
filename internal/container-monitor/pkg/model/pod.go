@@ -40,13 +40,14 @@ func NewPod(name string) *Pod {
 
 func (pod *Pod) Speculate() {
 	// Speculate if there are 2 evaluation results
+	pod.mu.Lock()
 	n := pod.Evaluations.Size()
 	if n < 2 {
+		pod.mu.Unlock()
 		return
 	}
 
 	// Only speculate using latest two
-	pod.mu.Lock()
 	for ; n > 2; n-- {
 		pod.Evaluations.Pop()
 	}
