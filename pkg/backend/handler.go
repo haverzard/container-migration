@@ -16,14 +16,14 @@ type MigrationHandler interface {
 
 func (mb *MigrationBackend) HandleMigration(w http.ResponseWriter, req *http.Request) {
 	d := json.NewDecoder(req.Body)
-	mr := &migration.MigrationObject{}
+	mr := &migration.MigrationEvent{}
 	err := d.Decode(mr)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	mb.mh.AddMigration(mr)
-	fmt.Fprintf(w, "hello\n")
+	fmt.Fprintf(w, "Ok\n")
 }
 
 func (mb *MigrationBackend) GetClusterInfo(w http.ResponseWriter, req *http.Request) {
