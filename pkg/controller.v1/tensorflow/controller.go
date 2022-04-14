@@ -279,8 +279,8 @@ func (tc *TFController) processNextWorkItem() bool {
 	if key, ok = obj.(string); !ok {
 		/* haverzard */
 		// Check if it's migration job
-		if migrationObj, ok := obj.(*migration.MigrationObject); ok {
-			podName := migrationObj.PodName
+		if migrationEv, ok := obj.(*migration.MigrationEvent); ok {
+			podName := migrationEv.PodName
 			n := len(podName)
 			workerId := podName[n-5 : n]
 			log.Infof("Worker %s %s", workerId, podName)
@@ -288,7 +288,7 @@ func (tc *TFController) processNextWorkItem() bool {
 			// Indicate all soon-to-be-migrated workers with `Migration` flag
 			for _, runJob := range tc.RunningQueue {
 				plan := (*runJob.ReplicasPlacementPlan[tfv1.TFReplicaTypeWorker])
-				if workers, ok := plan[migrationObj.Node]; ok {
+				if workers, ok := plan[migrationEv.NodeName]; ok {
 					log.Infof("Workers: %v", workers)
 					if worker, ok := (*workers)[workerId]; ok && worker.TotalMigrations < 3 {
 						worker.Migration = true
@@ -299,9 +299,9 @@ func (tc *TFController) processNextWorkItem() bool {
 			// Process the migration job with the migration scheduling policy
 			err := tc.reconcileTFJobs(nil, true)
 			if err != nil {
-				tc.WorkQueue.AddRateLimited(migrationObj)
+				tc.WorkQueue.AddRateLimited(migrationEv)
 			}
-			tc.WorkQueue.Forget(migrationObj)
+			tc.WorkQueue.Forget(migrationEv)
 
 			return true
 		}

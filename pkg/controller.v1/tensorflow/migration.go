@@ -8,13 +8,13 @@ import (
 
 // When a migration request is received, enqueue it as migration job.
 func (tc *TFController) AddMigration(obj interface{}) {
-	migrationObj, ok := obj.(*migration.MigrationObject)
+	migrationEv, ok := obj.(*migration.MigrationEvent)
 	if !ok {
-		log.Errorf("enqueueMigration: Cannot interpret argument migrationObject as *MigrationObject? Am I wrong?: %#v", obj)
+		log.Errorf("enqueueMigration: Cannot interpret argument obj as *MigrationEvent? Am I wrong?: %#v", obj)
 		return
 	}
 
-	tc.WorkQueue.Add(migrationObj)
+	tc.WorkQueue.Add(migrationEv)
 
 	return
 }

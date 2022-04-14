@@ -1,9 +1,9 @@
 /* haverzard */
 package migration
 
-type MigrationObject struct {
-	Node    string `json:"node"`
-	PodName string `json:"pod"`
+type MigrationEvent struct {
+	NodeName string `json:"node"`
+	PodName  string `json:"pod"`
 }
 
 /* haverzard */

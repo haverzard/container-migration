@@ -55,9 +55,11 @@ func (nc *NodeController) RetrieveGlobalInfo() {
 }
 
 func (nc *NodeController) IsOverload() bool {
+	// copy resources info
 	nc.mu.Lock()
-	defer nc.mu.Unlock()
 	nodeResources := nc.CopyResources()
+	nc.mu.Unlock()
+
 	current := (*nodeResources)[utils.NODE_NAME]
 	if current == nil {
 		return false
