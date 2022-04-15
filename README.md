@@ -1,254 +1,179 @@
-# DRAGON
-
-K8s Custom Resource and Operator for Distributed TensorFlow Training Jobs with Parameter Server and Worker Strategy
+# container-migration
 
 ## Overview
 
-Fork from [kubeflow/tf-operator](https://github.com/kubeflow/tf-operator).
+Fork from [NTHU-LSALAB/DRAGON](https://github.com/NTHU-LSALAB/DRAGON).
 
-DRAGON makes it easy to deploy distributed parameter server TensorFlow training jobs with automatic scheduling and scaling strategies.
+Modification of dynamic resource scheduler for deep learning to support container migration policy.
 
-DRAGON bypass the kube-scheduler, directly assigns the location to every distributed training components. DRAGON is a custom scheduler for distributed TensorFlow training jobs.
 
-## Installation
+It consists of:
 
-Installation depends on various use cases:
-1. Training with CPU
-```
-kubectl create -f https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/v0.9/crd.yaml
-kubectl create -f https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/v0.9/dragon.yaml
-```
-2. Training with NVIDIA GPU ([NVIDIA GPU](https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/))
-```
-# K8s with NVIDIA GPU device plugin installed
-kubectl create -f https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/v0.9/crd.yaml
-kubectl create -f https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/v0.9/dragon.yaml
-```
-3. Training with portion NVIDIA GPU allocation ([KubeShare](https://github.com/NTHU-LSALAB/KubeShare))
-```
-# K8s with KubeShare installed
-kubectl create -f https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/v0.9/crd.yaml
-kubectl create -f https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/v0.9/dragon-kubeshare.yaml
-```
+Component         | Description
+------------------|---
+[DRAGON](https://github.com/haverzard/container-migration/tree/main/cmd/DRAGON) | DRAGON is a dynamic resource scheduler for distributed parameter server Tensorflow training jobs (TFJob) with automatic scheduling and scaling strategies. A custom migration policy and microservice have been added to it.
+[Container Monitor](https://github.com/haverzard/container-migration/tree/main/internal/container-monitor) | Container Monitor is a monitoring module for training tasks. It's deployed using DaemonSet to localize the monitoring in order to reduce the overhead.
+[Preemptible Job](https://github.com/haverzard/container-migration/tree/main/internal/jobs) | A modified distributed Tensorflow job to support migration.
 
-## TFJobs
-
-TFJob is a CRD, which describes the resource usage and how to run the job. DRAGON will deploy and schedule Pods according to the TFJob.
+## Project Structure
 
 ```
-apiVersion: kubeflow.org/v1
-kind: TFJob
-metadata:
-  name: job1
-spec:
-  max-instances: 4
-  min-instances: 1
-  cleanPodPolicy: "All"
-  tfReplicaSpecs:
-    PS:
-      replicas: 1
-      restartPolicy: OnFailure
-      template:
-        spec:
-          terminationGracePeriodSeconds: 0
-          containers:
-          - name: tensorflow
-            image: tensorflow/tensorflow:1.15.0-py3
-            command: ["/bin/bash", "-c", "curl -s https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/mnist-df.py | python3 -"]
-            ports:
-            - containerPort: 2222
-              name: tfjob-port
-            resources:
-              limits:
-                cpu: "4"
-                memory: "8Gi"
-    Worker:
-      replicas: 4
-      restartPolicy: OnFailure
-      template:
-        spec:
-          terminationGracePeriodSeconds: 0
-          containers:
-          - name: tensorflow
-            image: tensorflow/tensorflow:1.15.0-py3
-            command: ["/bin/bash", "-c", "curl -s https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/mnist-df.py | python3 -"]
-            env:
-            - name: "global_steps"
-              value: "100000"
-            ports:
-            - containerPort: 2222
-              name: tfjob-port
-            resources:
-              limits:
-                cpu: "4"
-                memory: "8Gi"
+.
+├── Makefile                  # Makefile command helpers
+├── go.mod                    # DRAGON dependencies
+├── cmd                       
+│   └── DRAGON                # DRAGON main application
+├── deployments
+│   ├── docker                # Dockerfiles for DRAGON, Container Monitor, and custom TF image
+│   ├── kubernetes            # Kubernetes config files for `dragon-tf-operator`, `container-monitor`, and TFJob
+│   └── terraform             # Terraform definitions with GCP provider
+├── internal
+│   ├── jobs                  # Python Distributed Parameter Server Tensorflow Job
+│   └── container-monitor     # Container Monitor project folder
+├── pkg                       # DRAGON package
+│   ├── apis
+│   ├── backend
+│   ├── client
+│   ├── common
+│   ├── control
+│   ├── controller.v1         # scheduling policies
+│   ├── logger
+│   ├── util
+│   └── version
+├── scripts
+└── vendor 
 ```
 
-* spec.max-instances: maximum number of workers to run simultaneously.
-* spec.min-instances: minimum number of workers to run simultaneously.
-* spec.cleanPodPolicy: set to "All".
-* spec.tfReplicaSpecs.PS.replicas: number of distributed tensorflow parameter server.
-* spec.tfReplicaSpecs.PS.restartPolicy: restart policy for all replicas of parameter server.
-* spec.tfReplicaSpecs.PS.template: parameter server PodSpec.
-* spec.tfReplicaSpecs.Worker.replicas: the initial number of distributed tensorflow worker, could be scaled bewteen spec.min-instances and spec.max-instances.
-* spec.tfReplicaSpecs.Worker.restartPolicy: restart policy for all replicas of worker.
-* spec.tfReplicaSpecs.PSWorker.template: worker PodSpec.
-* spec.tfReplicaSpecs.{PS,Worker}.template.spec.containers[N].name: set to "tensorflow", which means that containers[N] is used to determine the job status.
+## Requirements
 
-### Using native K8s Nvidia GPUs
+### Cloud
 
-```
-apiVersion: kubeflow.org/v1
-kind: TFJob
-metadata:
-  name: job1
-spec:
-  max-instances: 4
-  min-instances: 1
-  cleanPodPolicy: "All"
-  tfReplicaSpecs:
-    PS:
-      replicas: 1
-      restartPolicy: OnFailure
-      template:
-        spec:
-          terminationGracePeriodSeconds: 0
-          containers:
-          - name: tensorflow
-            image: tensorflow/tensorflow:1.15.0-py3
-            command: ["/bin/bash", "-c", "curl -s https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/mnist-df.py | python3 -"]
-            ports:
-            - containerPort: 2222
-              name: tfjob-port
-            resources:
-              limits:
-                cpu: "4"
-                memory: "8Gi"
-    Worker:
-      replicas: 4
-      restartPolicy: OnFailure
-      template:
-        spec:
-          terminationGracePeriodSeconds: 0
-          containers:
-          - name: tensorflow
-            image: tensorflow/tensorflow:1.15.0-gpu-py3
-            command: ["/bin/bash", "-c", "curl -s https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/mnist-df.py | python3 -"]
-            env:
-            - name: "global_steps"
-              value: "100000"
-            ports:
-            - containerPort: 2222
-              name: tfjob-port
-            resources:
-              limits:
-                cpu: "4"
-                memory: "8Gi"
-                "nvidia.com/gpu": 1
+- [GCP Account](https://console.cloud.google.com/)
+- [Terraform v.1.x](terraform.io)
+
+### On-Premise
+
+- [On-Premise Kubernetes v.1.19.x](https://kubernetes.io/docs/tasks/tools/)
+
+## Usages
+
+### Setup Cloud Cluster (GCP only)
+
+1.  Create `deployments/terraform/terraform.tfvars` and fill it with the required variables. For example, you can see the value below:
+
+    ```
+    project_id = "my-project-name"
+    region     = "asia-southeast1"
+    zone       = "asia-southeast1-b"
+    ```
+
+2.  Now, the GKE cluster has been defined on Terraform. To initialize it, run the command below:
+
+    ```sh
+    cd deployments/terraform
+    terraform apply
+    ```
+
+### Destroy Cloud Cluster (GCP Only)
+
+Run the command below:
+
+```sh
+cd deployments/terraform
+terraform destroy
 ```
 
-### Using portion GPUs ([KubeShare](https://github.com/NTHU-LSALAB/KubeShare))
+### Build Custom Docker Images
 
-```
-apiVersion: kubeflow.org/v1
-kind: TFJob
-metadata:
-  name: job1
-  annotations:
-    # required if DRAGON support KubeShare. DO NOT set this flag in non-KubeShare DRAGON mode, otherwise will get the wrong scheduling result.
-    "DRAGON_KUBESHARE": "true"
-spec:
-  max-instances: 4
-  min-instances: 1
-  cleanPodPolicy: "All"
-  tfReplicaSpecs:
-    PS:
-      replicas: 1
-      restartPolicy: OnFailure
-      template:
-        spec:
-          terminationGracePeriodSeconds: 0
-          containers:
-          - name: tensorflow
-            image: tensorflow/tensorflow:1.15.0-py3
-            command: ["/bin/bash", "-c", "curl -s https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/mnist-df.py | python3 -"]
-            ports:
-            - containerPort: 2222
-              name: tfjob-port
-            resources:
-              limits:
-                cpu: "4"
-                memory: "8Gi"
-    Worker:
-      replicas: 4
-      restartPolicy: OnFailure
-      template:
-        metadata:
-          annotations:
-            "kubeshare/gpu_request": "0.5"
-            "kubeshare/gpu_limit": "1.0"
-            "kubeshare/gpu_mem": "3189243904" # 3G
-        spec:
-          terminationGracePeriodSeconds: 0
-          containers:
-          - name: tensorflow
-            image: tensorflow/tensorflow:1.15.0-gpu-py3
-            command: ["/bin/bash", "-c", "curl -s https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON/mnist-df.py | python3 -"]
-            env:
-            - name: "global_steps"
-              value: "100000"
-            ports:
-            - containerPort: 2222
-              name: tfjob-port
-            resources:
-              limits:
-                cpu: "4"
-                memory: "8Gi"
+1.  Make sure you have logged in to your docker registry.
+
+    ```sh
+    docker login
+    ```
+
+2.  Change the make commands for `release-dragon`, `release-monitor`, and `release-tf-image` in `Makefile` so it points to your Docker repositories. Then, release the images by running the commands.
+
+    ```sh
+    VERSION=<VERSION> make release-dragon
+    VERSION=<VERSION> make release-monitor
+    VERSION=<VERSION> make release-tf-image
+    ```
+
+3. Do not forget to update images on the Kubernetes config files in the `deployments/kubernetes/` folder.
+
+### Deploy DRAGON and Container Monitor
+
+> Note: DRAGON and Container Monitor have been built and uploaded in the Docker Hub. If you want to change/modify it, please refer to the `Build Custom Docker Images` step.
+
+Run the command below to install the modified DRAGON with container migration:
+
+```sh
+make install-custom
 ```
 
-### Deployment
+Run the command below to install the original DRAGON:
 
-DRAGON will create several Pods/SharePods and Services (for communication between replicas), naming by {JOB_NAME}-{REPLICA_TYPE}-{ID}. For example: job1-ps-0 and job1-worker-2.
-
-### TF_CONFIG
-
-An environment variable 'TF_CONFIG' in every replicas generated by DRAGON, is used to identify who it is. TF_CONFIG is in json format. For example, a job with one parameter server and four workers in default namespace, and its worker id 0 will be:
+```sh
+make install
 ```
-{"cluster":{"ps":["job1-ps-0.default.svc:2222"],"worker":["job1-worker-0.default.svc:2222","job1-worker-1.default.svc:2222","job1-worker-2.default.svc:2222","job1-worker-3.default.svc:2222"]},"task":{"type":"worker","index":0},"environment":"cloud"}
+
+### Undeploy DRAGON and Container Monitor
+
+Run the command below to uninstall the modified DRAGON with container migration:
+
+```sh
+make uninstall-custom
+```
+
+Run the command below to uninstall the original DRAGON:
+
+```sh
+make uninstall
+```
+
+### Run Test Scenario
+
+There are two main test scenarios: speed and accuracy. These two scenarios are broken down into two configurations:
+
+- speed: `speed-a` and `speed-b`
+- accuracy: `accuracy-a` and `accuracy-b`
+
+You can run a test scenario on one of the systems using the command below:
+
+```sh
+SYSTEM=<[dragon|solution]> SCENARIO=<[speed-a|speed-b|accuracy-a|accuracy-b]> make test
+```
+
+### Reset Test Scenario
+
+> Note: It doesn't matter which system or scenario you're selecting when resetting a test scenario. As long as it's a valid scenario and system, the reset command will always work. But, it's best to select the correct system and scenario to avoid any unexpected behavior.
+
+Run the command below:
+
+```sh
+SYSTEM=<[dragon|solution]> SCENARIO=<[speed-a|speed-b|accuracy-a|accuracy-b]> make reset
 ```
 
 ## Scheduling and Scaling Strategies
 
-* DRAGON tries to schedule pending jobs in the FIFO order, and ignoring the job which cannot meet its resource requirements.
-* If there exists some jobs which have been waiting for more than 30 seconds, pick the longest one. DRAGON will schedule the job if it can meet its resource requirements after scaling down running jobs. This is for higher system throughput.
-* If there exists some idle resources and DRGAON didn't perform any scheuling and scaling actions for more than one minutes, DRAGON tries to scale up running jobs. This is for higher resource utilization.
+### DRAGON Default Strategies
+
+* DRAGON tries to schedule pending jobs in the FIFO order and ignores the job which cannot meet its resource requirements.
+* If there exist some jobs which have been waiting for more than 30 seconds, pick the longest one. DRAGON will schedule the job if it can meet its resource requirements after scaling down running jobs. This is for higher system throughput.
+* If there exists some idle resources and DRAGON didn't perform any scheduling and scaling actions for more than one minute, DRAGON tries to scale up running jobs. This is for higher resource utilization.
 
 * DRAGON prefers to schedule all replicas within one node due to communication overhead.
-* When performing scaling down, DRAGON prefers to terminates the lonely replicas first. (lonely means that location of the replica is different from parameter server)
-* When performing scaling up, DRAGON prefers to schedule the new replicas to where the parameter server located.
+* When performing scaling down, DRAGON prefers to terminate the lonely replicas first. (lonely means that the location of the replica is different from the parameter server)
+* When performing scaling up, DRAGON prefers to schedule the new replicas to where the parameter server is located.
 
-## A demo clip
+### Migration Strategy
+* Container Monitor will listen for evaluation results from the training tasks and asynchronously decides if a migration must happen based on the result and the resource usage distribution.
+* When the resource usage distribution is imbalanced or a task has converged, Container Monitor will decide to migrate the task.
+* When a task is decided to be migrated, Container Monitor will send a migration request to DRAGON through the migration microservice.
+* DRAGON will receive the migration request and enqueue it as a migration event/job.
+* DRAGON will migrate the tasks using the migration policy by destroying the Pod and recreating it in another Node.
+* DRAGON will ignore the migration event if one of the candidate Nodes is the same as the source Node.
 
-[![asciicast](https://asciinema.org/a/303266.png)](https://asciinema.org/a/303266)
+## Questions
 
-## Build
-
-### Compiling
-```
-git clone https://github.com/NTHU-LSALAB/DRAGON.git
-cd DRAGON
-make
-```
-* bin/DRAGON: DRAGON controller.
-
-### Directories & Files
-* cmd/: where main function located of three binaries.
-* crd/: CRD specification yaml file.
-* docker/: materials of all docker images in yaml files
-* pkg/: includes DRAGON core components, SharePod, and API server clientset produced by code-generater.
-* code-gen.sh: code-generator script.
-* go.mod: DRAGON dependencies.
-
-## Issues
-
-Any issues please open a GitHub issue, thanks.
+Please contact me using [email](mailto:yonatanviody@gmail.com) if you have any question 😊
