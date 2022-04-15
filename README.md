@@ -55,15 +55,32 @@ Component         | Description
 
 - [On-Premise Kubernetes v.1.19.x](https://kubernetes.io/docs/tasks/tools/)
 
-## Installation
+## Usages
 
 ### Setup Cloud Cluster (GCP only)
 
-The GKE cluster has been defined on Terraform. To initialize it, run the command below:
+1.  Create `deployments/terraform/terraform.tfvars` and fill it with the required variables. For example, you can see the value below:
+
+    ```
+    project_id = "my-project-name"
+    region     = "asia-southeast1"
+    zone       = "asia-southeast1-b"
+    ```
+
+2.  The GKE cluster has been defined on Terraform. To initialize it, run the command below:
+
+    ```sh
+    cd deployments/terraform
+    terraform apply
+    ```
+
+### Destroy Cloud Cluster (GCP Only)
+
+Run the command below:
 
 ```sh
 cd deployments/terraform
-terraform apply
+terraform destroy
 ```
 
 ### Build Custom Docker Images
@@ -76,22 +93,63 @@ terraform apply
 
 2.  Change the make commands for `release-dragon`, `release-api`, and `release-tf-image` in `Makefile` so it points to your Docker repositories.
 
-3. Do not forget to update images on the Kubernetes config files in `deployments/kubernetes/` folder.
+3. Do not forget to update images on the Kubernetes config files in the `deployments/kubernetes/` folder.
 
 ### Deploy DRAGON and Container Monitor
 
 ***
-Note DRAGON and Container Monitor have been built and uploaded in the Docker Hub. If you want to change/modify it, please refer to `Build Custom Docker Images` step.
+Note: DRAGON and Container Monitor have been built and uploaded in the Docker Hub. If you want to change/modify it, please refer to the `Build Custom Docker Images` step.
 ***
 
 Run the command below to install the modified DRAGON with container migration:
+
 ```sh
 make install-custom
 ```
 
 Run the command below to install the original DRAGON:
+
 ```sh
 make install
+```
+
+### Undeploy DRAGON and Container Monitor
+
+Run the command below to uninstall the modified DRAGON with container migration:
+
+```sh
+make uninstall-custom
+```
+
+Run the command below to uninstall the original DRAGON:
+
+```sh
+make uninstall
+```
+
+### Run Test Scenario
+
+There are two main test scenarios: speed and accuracy. These two scenarios are broken down into two configurations:
+
+- speed: `speed-a` and `speed-b`
+- accuracy: `accuracy-a` and `accuracy-b`
+
+You can a test scenario on one of the systems using the command below:
+
+```sh
+SYSTEM=<[dragon|solution]> SCENARIO=<[speed|accuracy]> make test
+```
+
+### Reset Test Scenario
+
+***
+Note: It doesn't matter which system or scenario you're selecting when resetting a test scenario. As long as it's a valid scenario & system, the reset command will always work.
+***
+
+Run the command below:
+
+```sh
+SYSTEM=<[dragon|solution]> SCENARIO=<[speed|accuracy]> make reset
 ```
 
 ## Scheduling and Scaling Strategies
