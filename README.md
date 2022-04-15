@@ -97,9 +97,7 @@ terraform destroy
 
 ### Deploy DRAGON and Container Monitor
 
-***
-Note: DRAGON and Container Monitor have been built and uploaded in the Docker Hub. If you want to change/modify it, please refer to the `Build Custom Docker Images` step.
-***
+> Note: DRAGON and Container Monitor have been built and uploaded in the Docker Hub. If you want to change/modify it, please refer to the `Build Custom Docker Images` step.
 
 Run the command below to install the modified DRAGON with container migration:
 
@@ -142,9 +140,7 @@ SYSTEM=<[dragon|solution]> SCENARIO=<[speed|accuracy]> make test
 
 ### Reset Test Scenario
 
-***
-Note: It doesn't matter which system or scenario you're selecting when resetting a test scenario. As long as it's a valid scenario & system, the reset command will always work.
-***
+> Note: It doesn't matter which system or scenario you're selecting when resetting a test scenario. As long as it's a valid scenario & system, the reset command will always work.
 
 Run the command below:
 
