@@ -27,7 +27,7 @@ spec:
             command: ["/bin/bash", "-c", "curl -s $url/mnist-df.py > tf.py && (python tf.py chief & python tf.py)"]
             env:
             - name: "global_steps"
-              value: "500"
+              value: "1000"
             - name: "batch_interval"
               value: "20"
             - name: "max_workers"
@@ -54,7 +54,7 @@ spec:
             command: ["/bin/bash", "-c", "curl -s $url/mnist-df.py | python3 -"]
             env:
             - name: "global_steps"
-              value: "500"
+              value: "1000"
             - name: "batch_interval"
               value: "20"
             - name: "max_workers"
