@@ -3,11 +3,9 @@ url="${1:-https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON}"
 upper_bound="${2:-1}"
 lower_bound="${3:-1}"
 init_replicas="${4:-1}"
-total_jobs="${5:-3}"
+output_file="${5:-deployments/kubernetes/jobs/example.yaml}"
 
-for (( id=1; id<=$total_jobs; id++ ))
-do
-cat <<EOT > deployments/kubernetes/jobs/job$id.yaml
+cat <<EOT > $output_file
 apiVersion: kubeflow.org/v1
 kind: TFJob
 metadata:
@@ -27,6 +25,13 @@ spec:
           - name: tensorflow
             image: haverzard/tf-image:$TF_IMAGE_VERSION
             command: ["/bin/bash", "-c", "curl -s $url/mnist-df.py > tf.py && (python tf.py chief & python tf.py)"]
+            env:
+            - name: "global_steps"
+              value: "500"
+            - name: "batch_interval"
+              value: "20"
+            - name: "max_workers"
+              value: "$upper_bound"
             ports:
             - containerPort: 2222
               name: tfjob-port
@@ -73,5 +78,3 @@ spec:
                 cpu: "1"
                 memory: "2Gi"
 EOT
-done
-
