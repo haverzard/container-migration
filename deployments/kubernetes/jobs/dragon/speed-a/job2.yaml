@@ -1,18 +1,10 @@
-#!/bin/bash
-url="${1:-https://lsalab.cs.nthu.edu.tw/~ericyeh/DRAGON}"
-upper_bound="${2:-1}"
-lower_bound="${3:-1}"
-init_replicas="${4:-1}"
-output_file="${5:-deployments/kubernetes/jobs/example.yaml}"
-
-cat <<EOT > $output_file
 apiVersion: kubeflow.org/v1
 kind: TFJob
 metadata:
-  name: job$id
+  name: job2
 spec:
-  max-instances: $upper_bound
-  min-instances: $lower_bound
+  max-instances: 1
+  min-instances: 1
   cleanPodPolicy: "All"
   tfReplicaSpecs:
     PS:
@@ -23,42 +15,42 @@ spec:
           terminationGracePeriodSeconds: 0
           containers:
           - name: tensorflow
-            image: haverzard/tf-image:$TF_IMAGE_VERSION
-            command: ["/bin/bash", "-c", "curl -s $url/mnist-df.py > tf.py && (python tf.py chief & python tf.py)"]
+            image: haverzard/tf-image:0.0.0
+            command: ["/bin/bash", "-c", "curl -s https://raw.githubusercontent.com/haverzard/container-migration/main/internal/jobs/speed/mnist-df.py > tf.py && python tf.py"]
             env:
             - name: "global_steps"
               value: "1000"
             - name: "batch_interval"
               value: "20"
             - name: "max_workers"
-              value: "$upper_bound"
+              value: "1"
             ports:
             - containerPort: 2222
               name: tfjob-port
             resources:
               requests:
-                cpu: "500m"
-                memory: "1Gi"
+                cpu: "250m"
+                memory: "500Mi"
               limits:
-                cpu: "1"
-                memory: "2Gi"
+                cpu: "4"
+                memory: "8Gi"
     Worker:
-      replicas: $init_replicas
+      replicas: 1
       restartPolicy: OnFailure
       template:
         spec:
           terminationGracePeriodSeconds: 0
           containers:
           - name: tensorflow
-            image: haverzard/tf-image:$TF_IMAGE_VERSION
-            command: ["/bin/bash", "-c", "curl -s $url/mnist-df.py | python3 -"]
+            image: haverzard/tf-image:0.0.0
+            command: ["/bin/bash", "-c", "curl -s https://raw.githubusercontent.com/haverzard/container-migration/main/internal/jobs/speed/mnist-df.py | python3 -"]
             env:
             - name: "global_steps"
               value: "1000"
             - name: "batch_interval"
               value: "20"
             - name: "max_workers"
-              value: "$upper_bound"
+              value: "1"
             - name: NODE_IP
               valueFrom:
                 fieldRef:
@@ -72,9 +64,8 @@ spec:
               name: tfjob-port
             resources:
               requests:
-                cpu: "500m"
-                memory: "1Gi"
+                cpu: "250m"
+                memory: "500Mi"
               limits:
-                cpu: "1"
-                memory: "2Gi"
-EOT
+                cpu: "4"
+                memory: "8Gi"

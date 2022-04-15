@@ -58,16 +58,16 @@ URL ?= 'https://raw.githubusercontent.com/haverzard/container-migration/main/int
 MAX_REPLICAS ?= 1
 MIN_REPLICAS ?= 1
 INIT_REPLICAS ?= 1
-TOTAL_JOBS ?= 3
+OUTPUT_FILE ?= 'deployments/kubernetes/jobs/example.yaml'
 gen-tc:
-	TF_IMAGE_VERSION=$(TF_IMAGE_VERSION) ./scripts/generate-tc.sh $(URL) $(MAX_REPLICAS) $(MIN_REPLICAS) $(INIT_REPLICAS) $(TOTAL_JOBS)
+	TF_IMAGE_VERSION=$(TF_IMAGE_VERSION) ./scripts/generate-tc.sh $(URL) $(MAX_REPLICAS) $(MIN_REPLICAS) $(INIT_REPLICAS) $(OUTPUT_FILE)
 
 test:
-	kubectl apply -f ./deployments/kubernetes/jobs/job1.yaml
-	kubectl apply -f ./deployments/kubernetes/jobs/job2.yaml
-	kubectl apply -f ./deployments/kubernetes/jobs/job3.yaml
+	kubectl apply -f ./deployments/kubernetes/jobs/$(SYSTEM)/$(SCENARIO)/job1.yaml
+	kubectl apply -f ./deployments/kubernetes/jobs/$(SYSTEM)/$(SCENARIO)/job2.yaml
+	kubectl apply -f ./deployments/kubernetes/jobs/$(SYSTEM)/$(SCENARIO)/job3.yaml
 
 reset:
-	kubectl delete -f ./deployments/kubernetes/jobs/job1.yaml
-	kubectl delete -f ./deployments/kubernetes/jobs/job2.yaml
-	kubectl delete -f ./deployments/kubernetes/jobs/job3.yaml
+	kubectl delete -f ./deployments/kubernetes/jobs/$(SYSTEM)/$(SCENARIO)/job1.yaml
+	kubectl delete -f ./deployments/kubernetes/jobs/$(SYSTEM)/$(SCENARIO)/job2.yaml
+	kubectl delete -f ./deployments/kubernetes/jobs/$(SYSTEM)/$(SCENARIO)/job3.yaml
