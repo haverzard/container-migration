@@ -11,7 +11,7 @@ It consists of:
 
 Component         | Description
 ------------------|---
-[DRAGON](https://github.com/haverzard/container-migration/tree/main/cmd/DRAGON) | DRAGON is a dynamic resource scheduler for distributed parameter server Tensorflow training jobs (TFJob) with automatic scheduling and scaling strategies.
+[DRAGON](https://github.com/haverzard/container-migration/tree/main/cmd/DRAGON) | DRAGON is a dynamic resource scheduler for distributed parameter server Tensorflow training jobs (TFJob) with automatic scheduling and scaling strategies. A custom migration policy and microservice have been added to it.
 [Container Monitor](https://github.com/haverzard/container-migration/tree/main/internal/container-monitor) | Container Monitor is a monitoring module for training tasks. It's deployed using DaemonSet to localize the monitoring in order to reduce the overhead.
 [Preemptible Job](https://github.com/haverzard/container-migration/tree/main/internal/jobs) | A modified distributed Tensorflow job to support migration.
 
@@ -67,7 +67,7 @@ Component         | Description
     zone       = "asia-southeast1-b"
     ```
 
-2.  The GKE cluster has been defined on Terraform. To initialize it, run the command below:
+2.  Now, the GKE cluster has been defined on Terraform. To initialize it, run the command below:
 
     ```sh
     cd deployments/terraform
@@ -85,13 +85,19 @@ terraform destroy
 
 ### Build Custom Docker Images
 
-1.  Make you have logged in to your docker registry.
+1.  Make sure you have logged in to your docker registry.
 
     ```sh
     docker login
     ```
 
-2.  Change the make commands for `release-dragon`, `release-api`, and `release-tf-image` in `Makefile` so it points to your Docker repositories.
+2.  Change the make commands for `release-dragon`, `release-monitor`, and `release-tf-image` in `Makefile` so it points to your Docker repositories. Then, release the images by running the commands.
+
+    ```sh
+    VERSION=<VERSION> make release-dragon
+    VERSION=<VERSION> make release-monitor
+    VERSION=<VERSION> make release-tf-image
+    ```
 
 3. Do not forget to update images on the Kubernetes config files in the `deployments/kubernetes/` folder.
 
@@ -132,20 +138,20 @@ There are two main test scenarios: speed and accuracy. These two scenarios are b
 - speed: `speed-a` and `speed-b`
 - accuracy: `accuracy-a` and `accuracy-b`
 
-You can a test scenario on one of the systems using the command below:
+You can run a test scenario on one of the systems using the command below:
 
 ```sh
-SYSTEM=<[dragon|solution]> SCENARIO=<[speed|accuracy]> make test
+SYSTEM=<[dragon|solution]> SCENARIO=<[speed-a|speed-b|accuracy-a|accuracy-b]> make test
 ```
 
 ### Reset Test Scenario
 
-> Note: It doesn't matter which system or scenario you're selecting when resetting a test scenario. As long as it's a valid scenario & system, the reset command will always work.
+> Note: It doesn't matter which system or scenario you're selecting when resetting a test scenario. As long as it's a valid scenario and system, the reset command will always work. But, it's best to select the correct system and scenario to avoid any unexpected behavior.
 
 Run the command below:
 
 ```sh
-SYSTEM=<[dragon|solution]> SCENARIO=<[speed|accuracy]> make reset
+SYSTEM=<[dragon|solution]> SCENARIO=<[speed-a|speed-b|accuracy-a|accuracy-b]> make reset
 ```
 
 ## Scheduling and Scaling Strategies
@@ -163,11 +169,11 @@ SYSTEM=<[dragon|solution]> SCENARIO=<[speed|accuracy]> make reset
 ### Migration Strategy
 * Container Monitor will listen for evaluation results from the training tasks and asynchronously decides if a migration must happen based on the result and the resource usage distribution.
 * When the resource usage distribution is imbalanced or a task has converged, Container Monitor will decide to migrate the task.
-* When a task is decided to be migrated, Container Monitor will a migration request to DRAGON through the migration microservice.
-* DRAGON will receive the migration request and enqueue it as a migration job.
+* When a task is decided to be migrated, Container Monitor will send a migration request to DRAGON through the migration microservice.
+* DRAGON will receive the migration request and enqueue it as a migration event/job.
 * DRAGON will migrate the tasks using the migration policy by destroying the Pod and recreating it in another Node.
-* DRAGON will ignore the migration job if the target Node is the same as the source Node.
+* DRAGON will ignore the migration event if one of the candidate Nodes is the same as the source Node.
 
 ## Questions
 
-Please contact me on [email](mailto:yonatanviody@gmail.com) if you have any questions 😊
+Please contact me using [email](mailto:yonatanviody@gmail.com) if you have any question 😊
