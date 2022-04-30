@@ -7,8 +7,8 @@ resource "google_container_cluster" "ta_playground" {
   # separately managed node pools. So we create the smallest possible default
   # node pool and immediately delete it.
   remove_default_node_pool = true
-  min_master_version       = "1.19.16-gke.8300"
-  node_version             = "1.19.16-gke.8300"
+  min_master_version       = "1.19.16-gke.11000"
+  node_version             = "1.19.16-gke.11000"
   initial_node_count       = var.gke_num_nodes
 }
 
