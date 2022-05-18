@@ -419,6 +419,7 @@ func SchedulingAlgorithm(
 				&([]*cluster.PodRequests{
 					highPriorityJob,
 				}),
+				nil,
 				nodeRes,
 			)
 			// If high priority job can be scheduled, schedule it here... LOL
@@ -823,7 +824,7 @@ func ScaleDown(highPriorityJob *cluster.PodRequests, runningQueue JobQueue, cons
 
 				// test if request can be scheduled
 				log.Infof("Scale Down schedule test start...")
-				ok, tmp := ScheduleJob(&([]*cluster.PodRequests{highPriorityJob}), nodeRes)
+				ok, tmp := ScheduleJob(&([]*cluster.PodRequests{highPriorityJob}), nil, nodeRes)
 
 				if ok[0] == len(*highPriorityJob) {
 					log.Infof("Scale Down successful!")
@@ -879,7 +880,7 @@ func ScaleDown(highPriorityJob *cluster.PodRequests, runningQueue JobQueue, cons
 
 	// final test if request can be scheduled
 	log.Infof("Scale Down schedule test start...")
-	ok, tmp := ScheduleJob(&([]*cluster.PodRequests{highPriorityJob}), nodeRes)
+	ok, tmp := ScheduleJob(&([]*cluster.PodRequests{highPriorityJob}), nil, nodeRes)
 
 	if ok[0] == len(*highPriorityJob) {
 		log.Infof("Scale Down successful!")
