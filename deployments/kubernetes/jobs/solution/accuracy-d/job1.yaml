@@ -5,8 +5,8 @@ metadata:
 spec:
   max-instances: 3
   min-instances: 3
-  node-preference: gke-ta-playground-ta-playground-node--40e81ac4-38v9
-  cleanPodPolicy: "All"
+  node-preference: NODE_1
+  cleanPodPolicy: "All"s
   tfReplicaSpecs:
     PS:
       replicas: 1
