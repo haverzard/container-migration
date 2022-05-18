@@ -5,6 +5,7 @@ metadata:
 spec:
   max-instances: 2
   min-instances: 2
+  node-preference: NODE_1
   cleanPodPolicy: "All"
   tfReplicaSpecs:
     PS:

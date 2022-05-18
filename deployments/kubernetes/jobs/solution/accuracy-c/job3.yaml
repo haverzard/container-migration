@@ -1,11 +1,11 @@
 apiVersion: kubeflow.org/v1
 kind: TFJob
 metadata:
-  name: job1
+  name: job3
 spec:
   max-instances: 1
   min-instances: 1
-  node-preference: NODE_1
+  node-preference: NODE_3
   cleanPodPolicy: "All"
   tfReplicaSpecs:
     PS:
@@ -13,11 +13,11 @@ spec:
       restartPolicy: OnFailure
       template:
         spec:
-          terminationGracePeriodSeconds: 0
+          terminationGracePeriodSeconds: 100
           containers:
           - name: tensorflow
             image: haverzard/tf-image:0.0.0
-            command: ["/bin/bash", "-c", "curl -s https://raw.githubusercontent.com/haverzard/container-migration/main/internal/jobs/speed/mnist-df.py > tf.py && python tf.py"]
+            command: ["/bin/bash", "-c", "curl -s https://raw.githubusercontent.com/haverzard/container-migration/main/internal/jobs/accuracy/mnist-df-preemptible.py > tf.py && (python tf.py chief & python tf.py)"]
             env:
             - name: "global_steps"
               value: "1000"
@@ -44,7 +44,7 @@ spec:
           containers:
           - name: tensorflow
             image: haverzard/tf-image:0.0.0
-            command: ["/bin/bash", "-c", "curl -s https://raw.githubusercontent.com/haverzard/container-migration/main/internal/jobs/speed/mnist-df.py | python3 -"]
+            command: ["/bin/bash", "-c", "curl -s https://raw.githubusercontent.com/haverzard/container-migration/main/internal/jobs/accuracy/mnist-df-preemptible.py | python3 -"]
             env:
             - name: "global_steps"
               value: "1000"
