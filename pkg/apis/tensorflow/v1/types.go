@@ -70,8 +70,9 @@ type TFJobSpec struct {
 	//   }
 	TFReplicaSpecs map[TFReplicaType]*common.ReplicaSpec `json:"tfReplicaSpecs"`
 
-	MaxInstances *int32 `json:"max-instances"`
-	MinInstances *int32 `json:"min-instances"`
+	MaxInstances  *int32  `json:"max-instances"`
+	MinInstances  *int32  `json:"min-instances"`
+	PreferredNode *string `json:"preferred-node"`
 }
 
 // TFReplicaType is the type for TFReplica. Can be one of: "Chief"/"Master" (semantically equivalent),

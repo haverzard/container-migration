@@ -471,6 +471,7 @@ func SchedulingAlgorithm(
 						job.GetPodRequests(tfv1.TFReplicaTypePS),
 						job.GetPodRequests(tfv1.TFReplicaTypeWorker),
 					}),
+					job.Spec.PreferredNode,
 					nodeRes,
 				)
 				// log.Infof("************** ERICYEH: OK NUM: %d", ok)
@@ -516,7 +517,7 @@ func SchedulingAlgorithm(
 // * okNum: the max number of worker can be scheduled,
 // * placementPlan: placement plan of workers,
 // * PSPlace: nodeName of parameter server.
-func ScheduleJob(requestsGroups *[]*cluster.PodRequests, constNodeRes cluster.NodeResources) (okNum []int, placementPlansPtr *[]*JobPlacementPlan) {
+func ScheduleJob(requestsGroups *[]*cluster.PodRequests, preferred *string, constNodeRes cluster.NodeResources) (okNum []int, placementPlansPtr *[]*JobPlacementPlan) {
 	log.Infof("================= ScheduleJob Start =================")
 	defer log.Infof("================== ScheduleJob End ==================")
 
@@ -535,8 +536,7 @@ func ScheduleJob(requestsGroups *[]*cluster.PodRequests, constNodeRes cluster.No
 
 	maxSlot, maxSlotNode := 0, ""
 
-	// Test one node can contain all requests
-	for nodeName, node := range nodeRes {
+	isAllocatableOnNode := func(nodeName string, node *cluster.NodeResource) bool {
 		tmps := make([]*NodeResPlacePlan, groupNum)
 		for k := range tmps {
 			tmps[k] = &NodeResPlacePlan{}
@@ -642,7 +642,7 @@ func ScheduleJob(requestsGroups *[]*cluster.PodRequests, constNodeRes cluster.No
 				(*placementPlans[groupIdx])[nodeName] = val
 			}
 			log.Infof("There is one node %s can contain all requests, ok num: %d", nodeName, okNum)
-			return
+			return true
 		}
 
 		tmpNum := func() (max int) {
@@ -660,6 +660,19 @@ func ScheduleJob(requestsGroups *[]*cluster.PodRequests, constNodeRes cluster.No
 		}()
 		if tmpNum > maxSlot {
 			maxSlot, maxSlotNode = tmpNum, nodeName
+		}
+		return false
+	}
+	if preferred != nil {
+		if node, ok := nodeRes[*preferred]; ok && isAllocatableOnNode(*preferred, node) {
+			return
+		}
+	}
+
+	// Test one node can contain all requests
+	for nodeName, node := range nodeRes {
+		if isAllocatableOnNode(nodeName, node) {
+			return
 		}
 	}
 
