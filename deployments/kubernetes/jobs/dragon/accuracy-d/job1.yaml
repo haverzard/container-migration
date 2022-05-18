@@ -16,7 +16,7 @@ spec:
           containers:
           - name: tensorflow
             image: haverzard/tf-image:0.0.0
-            command: ["/bin/bash", "-c", "curl -s https://raw.githubusercontent.com/haverzard/container-migration/main/internal/jobs/accuracy/mnist-df.py > tf.py && python tf.py"]
+            command: ["/bin/bash", "-c", "curl -s https://storage.googleapis.com/haverzard-ta/models/accuracy/mnist-df.py > tf.py && python tf.py"]
             env:
             - name: "global_steps"
               value: "1000"
@@ -43,7 +43,7 @@ spec:
           containers:
           - name: tensorflow
             image: haverzard/tf-image:0.0.0
-            command: ["/bin/bash", "-c", "curl -s https://raw.githubusercontent.com/haverzard/container-migration/main/internal/jobs/accuracy/mnist-df.py | python3 -"]
+            command: ["/bin/bash", "-c", "curl -s https://storage.googleapis.com/haverzard-ta/models/accuracy/mnist-df.py | python3 -"]
             env:
             - name: "global_steps"
               value: "1000"
