@@ -61,6 +61,6 @@ spec:
   restartPolicy: Always
   containers:
   - name: dragon-tf-operator
-    image: haverzard/dragon:legacy
+    image: haverzard/dragon:legacy-next
     imagePullPolicy: Always
     command: ["DRAGON", "-alsologtostderr"]

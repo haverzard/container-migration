@@ -1,0 +1,72 @@
+apiVersion: kubeflow.org/v1
+kind: TFJob
+metadata:
+  name: job1
+spec:
+  max-instances: 1
+  min-instances: 1
+  node-preference: NODE_1
+  cleanPodPolicy: "All"
+  tfReplicaSpecs:
+    PS:
+      replicas: 1
+      restartPolicy: OnFailure
+      template:
+        spec:
+          terminationGracePeriodSeconds: 0
+          containers:
+          - name: tensorflow
+            image: haverzard/tf-image:0.0.0
+            command: ["/bin/bash", "-c", "curl -s https://raw.githubusercontent.com/haverzard/container-migration/main/internal/jobs/speed/mnist-df.py > tf.py && python tf.py"]
+            env:
+            - name: "global_steps"
+              value: "1000"
+            - name: "batch_interval"
+              value: "20"
+            - name: "max_workers"
+              value: "1"
+            ports:
+            - containerPort: 2222
+              name: tfjob-port
+            resources:
+              requests:
+                cpu: "250m"
+                memory: "500Mi"
+              limits:
+                cpu: "4"
+                memory: "8Gi"
+    Worker:
+      replicas: 1
+      restartPolicy: OnFailure
+      template:
+        spec:
+          terminationGracePeriodSeconds: 0
+          containers:
+          - name: tensorflow
+            image: haverzard/tf-image:0.0.0
+            command: ["/bin/bash", "-c", "curl -s https://raw.githubusercontent.com/haverzard/container-migration/main/internal/jobs/speed/mnist-df.py | python3 -"]
+            env:
+            - name: "global_steps"
+              value: "1000"
+            - name: "batch_interval"
+              value: "20"
+            - name: "max_workers"
+              value: "1"
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            ports:
+            - containerPort: 2222
+              name: tfjob-port
+            resources:
+              requests:
+                cpu: "250m"
+                memory: "500Mi"
+              limits:
+                cpu: "4"
+                memory: "8Gi"
