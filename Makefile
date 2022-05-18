@@ -63,9 +63,9 @@ gen-tc:
 	TF_IMAGE_VERSION=$(TF_IMAGE_VERSION) ./scripts/generate-tc.sh $(URL) $(MAX_REPLICAS) $(MIN_REPLICAS) $(INIT_REPLICAS) $(OUTPUT_FILE)
 
 test:
-	kubectl apply -f ./deployments/kubernetes/jobs/$(SYSTEM)/$(SCENARIO)/job1.yaml
-	kubectl apply -f ./deployments/kubernetes/jobs/$(SYSTEM)/$(SCENARIO)/job2.yaml
-	kubectl apply -f ./deployments/kubernetes/jobs/$(SYSTEM)/$(SCENARIO)/job3.yaml
+	./scripts/substitute-test.sh ./deployments/kubernetes/jobs/$(SYSTEM)/$(SCENARIO)/job1.yaml | kubectl apply -f -
+	./scripts/substitute-test.sh ./deployments/kubernetes/jobs/$(SYSTEM)/$(SCENARIO)/job2.yaml | kubectl apply -f -
+	./scripts/substitute-test.sh ./deployments/kubernetes/jobs/$(SYSTEM)/$(SCENARIO)/job3.yaml | kubectl apply -f -
 
 reset:
 	kubectl delete -f ./deployments/kubernetes/jobs/$(SYSTEM)/$(SCENARIO)/job1.yaml
