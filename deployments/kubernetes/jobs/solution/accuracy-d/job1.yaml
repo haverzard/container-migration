@@ -6,7 +6,7 @@ spec:
   max-instances: 3
   min-instances: 3
   node-preference: NODE_1
-  cleanPodPolicy: "All"
+  cleanPodPolicy: "All"s
   tfReplicaSpecs:
     PS:
       replicas: 1
