@@ -4,6 +4,7 @@ import tensorflow as tf
 import sys
 import os
 import ast
+import requests
 
 SEED = 10000
 np.random.seed(SEED)
