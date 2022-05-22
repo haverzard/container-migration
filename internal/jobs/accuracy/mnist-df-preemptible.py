@@ -1,9 +1,14 @@
 from tensorflow.examples.tutorials.mnist import input_data
+import numpy as np
 import tensorflow as tf
 import sys
 import os
 import ast
 import requests
+
+SEED = 10000
+np.random.seed(SEED)
+tf.set_random_seed(SEED)
 
 
 class Empty:
@@ -39,10 +44,10 @@ def conv2d(
     W = tf.get_variable(
         "W" + name,
         shape=(*kernel_size, n_inputs, filters),
-        initializer=tf.contrib.layers.xavier_initializer(),
+        initializer=tf.contrib.layers.xavier_initializer(seed=SEED),
     )
     b = tf.get_variable(
-        "B" + name, shape=(filters), initializer=tf.contrib.layers.xavier_initializer()
+        "B" + name, shape=(filters), initializer=tf.contrib.layers.xavier_initializer(seed=SEED)
     )
     # Conv2D wrapper, with bias and relu activation
     x = tf.nn.conv2d(x, W, strides=[1, *strides, 1], padding="VALID")
@@ -105,10 +110,10 @@ def main(_):
             Wfc1 = tf.get_variable(
                 "Wfc1",
                 shape=(10240, 10),
-                initializer=tf.contrib.layers.xavier_initializer(),
+                initializer=tf.contrib.layers.xavier_initializer(seed=SEED),
             )
             bfc1 = tf.get_variable(
-                "Bfc1", shape=(10), initializer=tf.contrib.layers.xavier_initializer()
+                "Bfc1", shape=(10), initializer=tf.contrib.layers.xavier_initializer(seed=SEED)
             )
             fc2 = tf.add(tf.matmul(fc1, Wfc1), bfc1)
             fc2 = batch_norm(fc2, axes=[0])
@@ -152,7 +157,11 @@ def main(_):
         ) as mon_sess:
 
             while not mon_sess.should_stop():
+                step = mon_sess.run([global_step])[0]
+                np.random.seed(step + SEED)
                 batch_xs, batch_ys = mnist.train.next_batch(16)
+                if mon_sess.should_stop():
+                    break
                 _, step = mon_sess.run(
                     [train_step, global_step], feed_dict={x: batch_xs, y_exp: batch_ys}
                 )
