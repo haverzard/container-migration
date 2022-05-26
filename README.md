@@ -71,6 +71,7 @@ Component         | Description
 
     ```sh
     cd deployments/terraform
+    terraform plan # for first execution
     terraform apply
     ```
 
@@ -129,6 +130,27 @@ Run the command below to uninstall the original DRAGON:
 
 ```sh
 make uninstall
+```
+
+### Setup Test Environments
+
+1.  Create `.env.local` file on the project root directory. See `.env.sample` for reference.
+
+2.  To get the nodes' names, run:
+
+    ```sh
+    kubectl get nodes
+    ```
+
+3. For the script, you can host the `internal/jobs/` folder and set `SCRIPT_URL` with the web URL.
+
+4. At the end, your `.env.local` should look like this:
+
+```
+NODE_1_NAME=gke-ta-playground-ta-playground-node--c491b482-c6nv
+NODE_2_NAME=gke-ta-playground-ta-playground-node--c491b482-jh7t
+NODE_3_NAME=gke-ta-playground-ta-playground-node--c491b482-k4qz
+SCRIPT_URL=https://storage.googleapis.com/haverzard-ta/models/
 ```
 
 ### Run Test Scenario
